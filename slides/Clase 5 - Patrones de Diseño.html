@@ -1,0 +1,2265 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clase 5 — Patrones de diseño (los 4 que faltan + cierre)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   THEME — Neo-Grid Bold
+   Mismo sistema que las clases 1, 2, 3 y 4.
+   =========================================== */
+:root{
+  --paper:#F5F4EF;      /* relleno por defecto de los paneles (ecru cálido) */
+  --bg:#ECECE8;         /* marco putty detrás del inset de 40px */
+  --ink:#0A0A0A;        /* casi-negro estructural */
+  --lemon:#E6FF3D;      /* el único acento neón: señal */
+  --muted:#8A8A85;      /* grafito de-enfatizado */
+  --red:#E5482F;        /* SOLO para "la cadena se corta" (CoR) */
+  --stage-bg:#1A1A1A;   /* fondo del viewport fuera de la slide */
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+
+/* ===========================================
+   FIXED 16:9 STAGE — estilos base obligatorios
+   =========================================== */
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:var(--stage-bg);}
+.deck-viewport{position:fixed;inset:0;overflow:hidden;background:var(--stage-bg);}
+.deck-stage{position:absolute;left:0;top:0;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0;background:var(--bg);}
+.slide{position:absolute;inset:0;width:1920px;height:1080px;overflow:hidden;display:block;visibility:hidden;opacity:0;pointer-events:none;background:var(--bg);}
+.slide.active,.slide.visible{visibility:visible;opacity:1;pointer-events:auto;z-index:1;}
+img,video,canvas,svg{max-width:100%;max-height:100%;}
+.deck-controls{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:1000;}
+@media print{
+  html,body{width:1920px;height:auto;overflow:visible;background:#fff;}
+  .deck-viewport{position:static;overflow:visible;background:#fff;}
+  .deck-stage{position:static;width:auto;height:auto;transform:none!important;background:none;}
+  .slide{position:relative;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;width:1920px;height:1080px;break-after:page;page-break-after:always;}
+  .slide:last-child{break-after:auto;page-break-after:auto;}
+  .deck-controls{display:none!important;}
+  .answer .ans-body{filter:none!important;opacity:1!important;}
+  .answer .ans-hint{display:none!important;}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important;}
+}
+
+/* ===========================================
+   EL MARCO UNIVERSAL — grilla 12 col × 8 filas
+   =========================================== */
+.slide{font-family:'Space Grotesk','Helvetica Neue',Arial,sans-serif;color:var(--ink);}
+.frame{position:absolute;inset:40px;display:grid;grid-template-columns:repeat(12,1fr);grid-template-rows:repeat(8,1fr);gap:12px;}
+.frame.g18{gap:18px;}
+
+.panel{position:relative;overflow:hidden;background:var(--paper);padding:28px 32px;display:flex;flex-direction:column;}
+.panel.ink{background:var(--ink);color:var(--paper);}
+.panel.lemon{background:var(--lemon);color:var(--ink);}
+.panel.plain{background:var(--bg);}
+.pad-lg{padding:36px 40px;}
+.pad-xl{padding:44px 50px;}
+.pad-sm{padding:20px 24px;}
+.center{justify-content:center;}
+.between{justify-content:space-between;}
+.grow{flex:1;}
+.row{flex-direction:row;}
+.aic{align-items:center;}
+
+/* ===========================================
+   TIPOGRAFÍA
+   =========================================== */
+.kicker{font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.1em;font-size:22px;font-weight:400;}
+.kicker.sm{font-size:16px;letter-spacing:.12em;}
+.title{font-weight:700;text-transform:uppercase;letter-spacing:-.02em;line-height:.95;}
+.display{font-size:128px;font-weight:700;text-transform:uppercase;letter-spacing:-.03em;line-height:.9;}
+.t-110{font-size:110px;} .t-96{font-size:96px;} .t-88{font-size:88px;} .t-72{font-size:72px;} .t-64{font-size:64px;}
+.t-56{font-size:56px;} .t-48{font-size:48px;} .t-44{font-size:44px;line-height:1;} .t-36{font-size:36px;line-height:1.02;} .t-30{font-size:30px;line-height:1.05;}
+.section-num{font-weight:700;font-size:300px;line-height:.8;letter-spacing:-.05em;text-transform:uppercase;}
+.stat{font-weight:700;font-size:156px;line-height:.85;letter-spacing:-.03em;}
+.stat-lg{font-weight:700;font-size:230px;line-height:.82;letter-spacing:-.04em;}
+.body{font-weight:400;font-size:28px;line-height:1.35;text-transform:none;letter-spacing:0;}
+.body-sm{font-weight:400;font-size:22px;line-height:1.45;text-transform:none;letter-spacing:0;}
+.body-xs{font-weight:400;font-size:19px;line-height:1.4;text-transform:none;letter-spacing:0;}
+.body-lg{font-weight:400;font-size:34px;line-height:1.3;text-transform:none;letter-spacing:0;}
+mark{background:var(--lemon);color:var(--ink);padding:0 8px;}
+.title em,.display em{color:var(--lemon);font-style:normal;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.b500{font-weight:500;}
+.up{text-transform:uppercase;}
+.dim{opacity:.72;}
+strong{font-weight:700;}
+em{font-style:italic;}
+
+.ic{font-family:'JetBrains Mono',monospace;font-size:.88em;background:rgba(10,10,10,.07);padding:1px 6px;overflow-wrap:anywhere;}
+.panel.ink .ic{background:rgba(245,244,239,.14);}
+
+ul.clean{list-style:none;}
+ul.clean li{position:relative;padding-left:34px;margin-bottom:16px;}
+ul.clean li::before{content:"";position:absolute;left:0;top:.55em;width:16px;height:16px;background:var(--ink);}
+ul.clean.on-ink li::before{background:var(--lemon);}
+ul.clean li:last-child{margin-bottom:0;}
+ul.clean.tight li{margin-bottom:10px;}
+ol.num{list-style:none;counter-reset:n;}
+ol.num li{position:relative;padding-left:52px;margin-bottom:14px;counter-increment:n;}
+ol.num li::before{content:counter(n);position:absolute;left:0;top:0;width:34px;height:34px;background:var(--ink);color:var(--lemon);font-family:'JetBrains Mono',monospace;font-size:19px;display:flex;align-items:center;justify-content:center;}
+
+.rule{height:2px;background:var(--ink);width:100%;}
+.rule.thin{height:1.5px;}
+
+.tag{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.06em;font-size:20px;padding:8px 16px;background:var(--paper);color:var(--ink);border:1.5px solid var(--ink);}
+.tag.on{background:var(--ink);color:var(--lemon);border-color:var(--ink);}
+.tag.lem{background:var(--lemon);color:var(--ink);border-color:var(--ink);}
+.tag.sm{font-size:16px;padding:6px 12px;}
+.fampill{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.06em;text-transform:uppercase;padding:5px 10px;}
+.fampill.crea{background:var(--lemon);color:var(--ink);}
+.fampill.estr{background:var(--ink);color:var(--paper);}
+.fampill.comp{background:var(--paper);color:var(--ink);border:1.5px solid var(--ink);}
+
+/* ===========================================
+   BLOQUES DE CÓDIGO — .codecols = dos columnas
+   para que el código LARGO se vea COMPLETO.
+   =========================================== */
+.code{background:var(--ink);color:#EDEBE3;font-family:'JetBrains Mono',monospace;white-space:pre;overflow:hidden;line-height:1.55;letter-spacing:0;text-transform:none;}
+.code.fs26{font-size:26px;} .code.fs24{font-size:24px;} .code.fs22{font-size:22px;} .code.fs21{font-size:21px;} .code.fs20{font-size:20px;} .code.fs19{font-size:19px;} .code.fs18{font-size:18px;} .code.fs17{font-size:17px;} .code.fs16{font-size:16px;}
+.code.dense{line-height:1.40;}
+.code .cm{color:var(--muted);}
+.code .kw{color:var(--lemon);}
+.code .st{color:#CFCBB6;}
+.code .cl{color:#FFFFFF;font-weight:500;}
+.code .ann{color:var(--lemon);}
+.codehead{font-family:'JetBrains Mono',monospace;font-size:18px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.codehead .dot{width:12px;height:12px;border-radius:50%;}
+.dot.r{background:#ff5f57;}.dot.y{background:#febc2e;}.dot.g{background:#28c840;}
+.codecols{display:flex;gap:30px;align-items:flex-start;}
+.codecols>.code{flex:1;min-width:0;}
+.codecols .vline{width:2px;align-self:stretch;background:#2C2C2C;flex:0 0 2px;}
+
+/* ===========================================
+   TABLA / MATRIZ DE COMPARACIÓN
+   =========================================== */
+table.matrix{width:100%;border-collapse:collapse;table-layout:fixed;}
+table.matrix th{background:var(--ink);color:var(--paper);font-family:'JetBrains Mono',monospace;font-size:16px;letter-spacing:.1em;text-transform:uppercase;text-align:left;padding:16px 20px;border-right:1.5px solid var(--bg);font-weight:400;}
+table.matrix th:last-child{border-right:none;}
+table.matrix td{padding:15px 20px;border-bottom:1.5px solid var(--ink);border-right:1.5px solid var(--ink);font-size:23px;line-height:1.3;vertical-align:middle;}
+table.matrix td:last-child{border-right:none;}
+table.matrix tr:last-child td{border-bottom:none;}
+table.matrix .pat{font-weight:700;text-transform:uppercase;letter-spacing:-.01em;font-size:25px;}
+table.matrix.sm td{font-size:20px;padding:11px 16px;}
+table.matrix.sm .pat{font-size:21px;}
+table.matrix.xs td{font-size:18px;padding:9px 14px;}
+table.matrix.xs .pat{font-size:19px;}
+table.matrix.xxs th{font-size:14px;padding:9px 14px;}
+table.matrix.xxs td{font-size:17px;padding:5px 14px;line-height:1.25;}
+table.matrix.xxs .pat{font-size:18px;}
+/* variante para tablas de 2 columnas de comparación (pares) */
+table.matrix.duo th:first-child{width:26%;}
+
+/* ===========================================
+   RESPUESTAS OCULTAS — el contenido va DIFUMINADO.
+   Un click (o la tecla R) lo revela. Nunca se
+   muestra la marca [RESPUESTA:...], es solo guía.
+   =========================================== */
+.answer{position:relative;cursor:pointer;border-left:6px solid var(--lemon);padding-left:20px;}
+.answer .ans-body{filter:blur(9px);opacity:.5;transition:filter .5s var(--ease),opacity .5s var(--ease);user-select:none;}
+.answer.revealed .ans-body{filter:blur(0);opacity:1;user-select:auto;}
+.answer .ans-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;z-index:4;pointer-events:none;transition:opacity .35s var(--ease);}
+.answer.revealed .ans-hint{opacity:0;}
+.answer .ans-hint span{font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.14em;font-size:17px;background:var(--ink);color:var(--lemon);padding:9px 18px;}
+.panel.ink .answer .ans-hint span{background:var(--lemon);color:var(--ink);}
+.answer .ans-body table.matrix{margin-top:4px;}
+
+/* ===========================================
+   PRIMITIVAS UML
+   =========================================== */
+.umlstage{position:relative;margin:auto;}
+.umlstage svg{position:absolute;inset:0;overflow:visible;max-width:none;max-height:none;}
+.umlbox{position:absolute;background:var(--paper);border:2px solid var(--ink);min-width:150px;z-index:2;}
+.umlbox.ink{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+.umlbox.lem{background:var(--lemon);color:var(--ink);}
+.umlbox.dash{border-style:dashed;}
+.umlbox .stereo{font-family:'JetBrains Mono',monospace;font-size:14px;letter-spacing:.08em;text-align:center;padding:5px 8px 0;color:var(--muted);text-transform:none;}
+.umlbox.ink .stereo{color:#b9b7ac;}
+.umlbox .nm{font-weight:700;text-transform:uppercase;letter-spacing:-.01em;font-size:21px;text-align:center;padding:6px 14px 10px;border-bottom:2px solid var(--ink);}
+.umlbox.ink .nm{border-color:var(--paper);}
+.umlbox .nm.it{font-style:italic;}
+.umlbox .mem{font-family:'JetBrains Mono',monospace;font-size:15px;line-height:1.72;padding:8px 14px;text-transform:none;letter-spacing:0;white-space:pre;}
+.umlbox .mem+.mem{border-top:2px solid var(--ink);}
+.umlbox.ink .mem+.mem{border-color:var(--paper);}
+.umlbox .mem .abs{color:var(--muted);font-style:italic;}
+.umlbox .mem u{text-decoration:underline;}
+.umlbox .mem .hl{display:block;margin:-8px -14px;padding:8px 14px;background:var(--lemon);font-weight:700;}
+.umlnote{position:absolute;background:var(--lemon);color:var(--ink);font-size:16px;line-height:1.3;padding:10px 14px;z-index:3;font-weight:500;}
+.umlrel{position:absolute;font-family:'JetBrains Mono',monospace;font-size:14px;letter-spacing:.06em;text-transform:uppercase;background:var(--bg);padding:2px 6px;z-index:2;}
+.umlrel.onpaper{background:var(--paper);}
+.flowbox{position:absolute;border:2px solid var(--ink);background:var(--paper);display:flex;align-items:center;justify-content:center;text-align:center;font-family:'JetBrains Mono',monospace;font-size:16px;line-height:1.25;padding:6px 8px;z-index:2;}
+.flowbox.lem{background:var(--lemon);}
+.flowbox.ink{background:var(--ink);color:var(--paper);}
+.flowbox.rej{border-color:var(--red);color:var(--red);background:var(--paper);font-weight:700;}
+/* banda rotulada para agrupar bloques (integrador) */
+.umlband{position:absolute;border:2px dashed var(--muted);z-index:1;}
+.umlband .bandlbl{position:absolute;top:-15px;left:16px;background:var(--ink);color:var(--lemon);font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.06em;padding:3px 12px;text-transform:uppercase;}
+
+/* ===========================================
+   ANIMACIÓN DE ENTRADA — paneles escalonados
+   =========================================== */
+.frame>*{opacity:0;transform:translateY(22px);transition:opacity .5s var(--ease),transform .5s var(--ease);}
+.slide.visible .frame>*{opacity:1;transform:none;}
+.slide.visible .frame>*:nth-child(1){transition-delay:.04s}
+.slide.visible .frame>*:nth-child(2){transition-delay:.10s}
+.slide.visible .frame>*:nth-child(3){transition-delay:.16s}
+.slide.visible .frame>*:nth-child(4){transition-delay:.22s}
+.slide.visible .frame>*:nth-child(5){transition-delay:.28s}
+.slide.visible .frame>*:nth-child(6){transition-delay:.34s}
+.slide.visible .frame>*:nth-child(7){transition-delay:.40s}
+.slide.visible .frame>*:nth-child(8){transition-delay:.46s}
+.slide.visible .frame>*:nth-child(9){transition-delay:.52s}
+
+/* ===========================================
+   CHROME
+   =========================================== */
+.progress{position:fixed;left:0;top:0;height:4px;background:var(--lemon);z-index:1000;transition:width .3s var(--ease);}
+.pagenum{position:absolute;right:44px;bottom:22px;font-family:'JetBrains Mono',monospace;font-size:15px;letter-spacing:.12em;color:var(--muted);z-index:6;}
+.edit-hotzone{position:fixed;top:0;left:0;width:80px;height:80px;z-index:10000;cursor:pointer;}
+.edit-toggle{position:fixed;top:18px;left:18px;width:52px;height:52px;border:none;background:var(--ink);color:var(--lemon);font-size:22px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .3s ease;z-index:10001;}
+.edit-toggle.show,.edit-toggle.active{opacity:1;pointer-events:auto;}
+.edit-toggle.active{background:var(--lemon);color:var(--ink);}
+[contenteditable="true"]{outline:2px dashed var(--muted);outline-offset:3px;cursor:text;}
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="edit-hotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Modo edición (E)">E</button>
+
+<!-- Marcadores UML compartidos -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="tri" markerWidth="16" markerHeight="16" refX="15" refY="8" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 1 L15 8 L1 15 Z" fill="#F5F4EF" stroke="#0A0A0A" stroke-width="1.6"/>
+    </marker>
+    <marker id="arw" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 1 L12 7 L2 13" fill="none" stroke="#0A0A0A" stroke-width="1.9"/>
+    </marker>
+    <marker id="arwr" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M2 1 L12 7 L2 13" fill="none" stroke="#E5482F" stroke-width="2.2"/>
+    </marker>
+    <marker id="dfill" markerWidth="22" markerHeight="14" refX="1" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 7 L9 1 L21 7 L9 13 Z" fill="#0A0A0A" stroke="#0A0A0A" stroke-width="1.4"/>
+    </marker>
+    <marker id="dhol" markerWidth="22" markerHeight="14" refX="1" refY="7" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M1 7 L9 1 L21 7 L9 13 Z" fill="#F5F4EF" stroke="#0A0A0A" stroke-width="1.7"/>
+    </marker>
+  </defs>
+</svg>
+
+<div class="deck-viewport">
+  <main class="deck-stage" id="deckStage">
+
+    <!-- ============ 01 · PORTADA ============ -->
+    <section class="slide active">
+      <div class="frame">
+        <div class="panel ink between row aic" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <span class="kicker" style="color:var(--paper)">Programación II — Unidad 4</span>
+          <span class="kicker" style="color:var(--paper)">Patrones de diseño <span style="color:var(--lemon)">// los 4 que faltan + cierre</span></span>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:1/span 8;grid-row:2/span 5;">
+          <div class="kicker" style="margin-bottom:22px;">Clase 05 — Cerramos el catálogo</div>
+          <h1 class="title" style="font-size:116px;">Los <mark>4</mark><br>que<br>faltan</h1>
+          <p class="body-lg" style="margin-top:24px;max-width:820px;">Facade, Chain of Responsibility, Template Method y State. Con eso <strong>cierra el temario evaluable</strong> — y la otra mitad de la clase es <strong>reconocer y desempatar</strong>.</p>
+        </div>
+
+        <div class="panel lemon pad-lg between" style="grid-column:9/span 4;grid-row:2/span 3;">
+          <div class="stat-lg">13<span style="font-size:.5em;">/13</span></div>
+          <div class="kicker" style="line-height:1.4;">Con los <strong>4</strong> de hoy cerrás el <strong>catálogo entero</strong></div>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:9/span 4;grid-row:5/span 2;">
+          <div class="t-36 title">Comparar<br>la intención,<br>no el dibujo</div>
+          <div class="kicker" style="color:var(--lemon);margin-top:14px;">→ los UML se parecen</div>
+        </div>
+
+        <div class="panel between row aic" style="grid-column:1/span 8;grid-row:7/span 2;flex-wrap:wrap;gap:10px;">
+          <span class="tag lem">Facade</span>
+          <span class="tag on">Chain of Responsibility</span>
+          <span class="tag on">Template Method</span>
+          <span class="tag on">State</span>
+        </div>
+
+        <div class="panel plain center aic" style="grid-column:9/span 4;grid-row:7/span 2;">
+          <div class="kicker sm dim" style="text-align:center;line-height:1.6;">Espacio → siguiente<br>Click en una respuesta → revelar</div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 02 · DÓNDE ESTAMOS PARADOS ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-lg row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-48" style="color:var(--paper)">Dónde estamos parados</h2>
+          <span class="kicker" style="color:var(--lemon)">9 vistos · 4 hoy</span>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:1/span 7;grid-row:2/span 5;">
+          <p class="body" style="margin-bottom:22px;">La cátedra evalúa <strong>13 patrones</strong>. Ya viste <strong>9</strong>. Hoy van los <strong>4</strong> resaltados y cierra el temario.</p>
+          <table class="matrix sm">
+            <tr><th style="width:34%">Familia</th><th>Patrones</th></tr>
+            <tr>
+              <td class="pat">Creacionales <span class="mono dim">(4)</span></td>
+              <td>Singleton · Factory Method · Abstract Factory · Builder</td>
+            </tr>
+            <tr>
+              <td class="pat">Estructurales <span class="mono dim">(4)</span></td>
+              <td>Adapter · Composite · Decorator · <mark>Facade</mark></td>
+            </tr>
+            <tr>
+              <td class="pat">Comportamiento <span class="mono dim">(5)</span></td>
+              <td>Strategy · Observer · <mark>Chain of Resp.</mark> · <mark>Template Method</mark> · <mark>State</mark></td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="panel lemon pad-lg between" style="grid-column:8/span 5;grid-row:2/span 3;">
+          <div>
+            <div class="kicker sm">Hoy van 4</div>
+            <div class="t-30 title" style="margin-top:12px;line-height:1.15;">Facade · Chain of Responsibility · Template Method · State</div>
+          </div>
+          <div class="mono" style="font-size:20px;">9 → 13 / 13</div>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:8/span 5;grid-row:5/span 2;">
+          <p class="body" style="color:var(--paper);">Casi todos los de hoy son de <strong style="color:var(--lemon)">comportamiento</strong> (3 de 4): la familia de <em>“¿quién hace qué y cuándo?”</em> — y donde más se confunden entre sí.</p>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 12;grid-row:7/span 2;">
+          <p class="body-lg">A partir de los patrones nuevos, <strong>no sumamos teoría</strong>: entrenamos el ojo para <mark>reconocer, elegir y desempatar</mark>. Eso es lo único que se evalúa.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 03 · ARRANCAMOS · LOS 9 EN UNA LÍNEA (respuesta oculta) ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-lg row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-48">Arrancamos: los 9 en una línea</h2>
+          <span class="kicker sm">la señal delatora, dicha por vos</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 5;grid-row:2/span 7;">
+          <p class="body" style="margin-bottom:24px;">No la definición: la <mark>señal delatora</mark>, la frase de un enunciado que te hace pensar en cada uno.</p>
+          <p class="body-sm dim" style="margin-bottom:8px;">Creacionales</p>
+          <p class="body-sm"><strong>Singleton · Factory Method · Abstract Factory · Builder</strong></p>
+          <p class="body-sm dim" style="margin:16px 0 8px;">Estructurales</p>
+          <p class="body-sm"><strong>Adapter · Composite · Decorator</strong></p>
+          <p class="body-sm dim" style="margin:16px 0 8px;">Comportamiento</p>
+          <p class="body-sm"><strong>Strategy · Observer</strong></p>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:6/span 7;grid-row:2/span 7;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <ul class="clean on-ink tight">
+                <li class="body-sm"><strong>Singleton</strong> — <em>“una única instancia”</em> accesible desde todo el sistema.</li>
+                <li class="body-sm"><strong>Factory Method</strong> — un <span class="ic">new</span>/<span class="ic">switch</span> que decide <strong>qué clase concreta crear</strong> (un producto).</li>
+                <li class="body-sm"><strong>Abstract Factory</strong> — una <strong>familia</strong> de productos que varían juntos y no se mezclan.</li>
+                <li class="body-sm"><strong>Builder</strong> — objeto con <strong>muchas partes opcionales</strong>, armado paso a paso.</li>
+                <li class="body-sm"><strong>Adapter</strong> — dos interfaces que <strong>no encajan</strong> y una no la controlás.</li>
+                <li class="body-sm"><strong>Composite</strong> — <strong>árbol</strong> todo-parte, tratar igual a la hoja y a la rama.</li>
+                <li class="body-sm"><strong>Decorator</strong> — <strong>sumar comportamientos combinables</strong> sin tocar la clase.</li>
+                <li class="body-sm"><strong>Strategy</strong> — elegir <strong>cómo hacer algo</strong> entre algoritmos, cambiable en runtime.</li>
+                <li class="body-sm"><strong>Observer</strong> — un cambio tiene que <strong>avisarle a varios</strong> que se suscriben y se van.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 04 · EL MÉTODO, POR ÚLTIMA VEZ ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-lg row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-48" style="color:var(--paper)">El método, por última vez</h2>
+          <span class="kicker" style="color:var(--lemon)">¿de qué se queja el problema?</span>
+        </div>
+
+        <div class="panel pad-lg between" style="grid-column:1/span 4;grid-row:2/span 5;">
+          <span class="fampill crea" style="align-self:flex-start;">Creacional</span>
+          <p class="body" style="margin:22px 0;">“No sé qué instanciar / el <span class="ic">new</span> está desparramado / quiero controlar la creación.”</p>
+          <div class="rule"></div>
+          <p class="body-sm dim" style="margin-top:16px;">crear · instanciar · única instancia · familia · paso a paso</p>
+        </div>
+
+        <div class="panel pad-lg between" style="grid-column:5/span 4;grid-row:2/span 5;">
+          <span class="fampill estr" style="align-self:flex-start;">Estructural</span>
+          <p class="body" style="margin:22px 0;">“Tengo que hacer encajar / envolver / esconder / representar un todo-y-sus-partes.”</p>
+          <div class="rule"></div>
+          <p class="body-sm dim" style="margin-top:16px;">adaptar · envolver · árbol · esconder complejidad</p>
+        </div>
+
+        <div class="panel pad-lg between" style="grid-column:9/span 4;grid-row:2/span 5;">
+          <span class="fampill comp" style="align-self:flex-start;">Comportamiento</span>
+          <p class="body" style="margin:22px 0;">“Tengo que elegir un comportamiento / avisar / coordinar / según en qué situación esté.”</p>
+          <div class="rule"></div>
+          <p class="body-sm dim" style="margin-top:16px;">elegir algoritmo · avisar · cadena · estado</p>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 12;grid-row:7/span 2;">
+          <p class="body-lg">Las dos herramientas de siempre: <mark style="background:var(--ink);color:var(--lemon)">programar contra una interfaz</mark> y <mark style="background:var(--ink);color:var(--lemon)">composición</mark>. La familia te dice <strong>por dónde buscar</strong>; el desempate te dice <strong>cuál es</strong>.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 05 · FACADE · INTENCIÓN ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-lg between" style="grid-column:1/span 5;grid-row:1/span 8;">
+          <div>
+            <span class="fampill estr" style="background:var(--lemon);color:var(--ink);">Estructural</span>
+            <div class="kicker" style="color:var(--paper);margin-top:26px;">Patrón 01 / 04 · intención</div>
+          </div>
+          <div class="title" style="font-size:118px;color:var(--paper);">Fa<span style="color:var(--lemon)">cade</span></div>
+          <div class="body-sm dim">El más simple de los 13: <span style="color:var(--lemon)">solo simplifica el acceso</span>.</div>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:6/span 7;grid-row:1/span 5;">
+          <div class="kicker sm dim" style="margin-bottom:18px;">Intención</div>
+          <p class="body-lg">Ofrecer una <mark>interfaz simple y de alto nivel</mark> a un subsistema complejo, <strong>escondiendo</strong> sus partes detrás de una sola puerta de entrada.</p>
+          <p class="body" style="margin-top:26px;">No agrega funcionalidad, no traduce nada: solo <strong>simplifica el acceso</strong>.</p>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:6/span 7;grid-row:6/span 3;">
+          <div class="kicker sm" style="margin-bottom:14px;">Analogía</div>
+          <p class="body">El <strong>mozo</strong> del restaurante. Pedís “milanesa con papas” y no hablás con el parrillero, el de las papas, la caja ni el que lava. El mozo (fachada) <strong>articula</strong> con todos. La cocina sigue siendo compleja: vos no la tocás.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 06 · FACADE · SEÑAL DELATORA ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Facade — señal delatora</h2>
+          <span class="kicker sm">sospechalo cuando…</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <ul class="clean">
+            <li class="body">El cliente tiene que <strong>orquestar muchas clases en un orden específico</strong> para hacer algo simple, y <strong>ese código de orquestación se repite</strong>.</li>
+            <li class="body">Querés <strong>desacoplar</strong> tu código de una biblioteca o subsistema grande del que usás <strong>el 10%</strong>.</li>
+            <li class="body">El enunciado dice: <em>“esconder la complejidad”</em>, <em>“un punto de entrada único”</em>, <em>“que el cliente no conozca los detalles internos”</em>, <em>“simplificar el uso”</em>.</li>
+          </ul>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div class="kicker" style="color:var(--lemon);margin-bottom:24px;">La fachada</div>
+          <div class="t-44 title" style="color:var(--paper);line-height:1.15;"><mark style="background:var(--lemon);color:var(--ink)">orquesta</mark><br><span style="font-size:34px;">— no —</span><br>implementa</div>
+          <p class="body-sm dim" style="color:var(--paper);margin-top:26px;">Si empieza a hacer <em>todo</em>, se vuelve un “objeto dios”. Ojo con SRP.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 07 · FACADE · EL CÓDIGO ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Facade — el código</h2>
+          <span class="kicker sm">el cliente conoce UNA clase, no cuatro</span>
+        </div>
+
+        <div class="panel ink pad-lg" style="grid-column:1/span 12;grid-row:2/span 6;">
+          <div class="codecols">
+            <div class="code fs18 dense"><span class="cm">// --- El subsistema: varias clases, cada una
+// con su propia complejidad</span>
+<span class="kw">class</span> <span class="cl">Codec</span>          { cargar(a: <span class="cl">string</span>)        { <span class="kw">return</span> `bytes(${a})`; } }
+<span class="kw">class</span> <span class="cl">ExtractorAudio</span> { extraer(b: <span class="cl">string</span>)       { <span class="kw">return</span> `audio[${b}]`; } }
+<span class="kw">class</span> <span class="cl">Compresor</span>      { comprimir(x, fmt: <span class="cl">string</span>) { <span class="kw">return</span> `${x}→${fmt}`; } }
+<span class="kw">class</span> <span class="cl">MarcaDeAgua</span>    { aplicar(x: <span class="cl">string</span>)       { <span class="kw">return</span> `${x}+marca`; } }
+
+<span class="cm">// El cliente: una línea, cero conocimiento
+// del subsistema</span>
+<span class="kw">const</span> resultado =
+  <span class="kw">new</span> <span class="cl">ConversorDeVideo</span>().convertir(<span class="st">"clase.avi"</span>, <span class="st">"mp4"</span>);</div>
+            <div class="vline"></div>
+            <div class="code fs18 dense"><span class="cm">// --- La FACHADA: una sola puerta, un solo
+// método de alto nivel</span>
+<span class="kw">class</span> <span class="cl">ConversorDeVideo</span> {
+  <span class="kw">private</span> codec     = <span class="kw">new</span> <span class="cl">Codec</span>();
+  <span class="kw">private</span> audio     = <span class="kw">new</span> <span class="cl">ExtractorAudio</span>();
+  <span class="kw">private</span> compresor = <span class="kw">new</span> <span class="cl">Compresor</span>();
+  <span class="kw">private</span> marca     = <span class="kw">new</span> <span class="cl">MarcaDeAgua</span>();
+
+  convertir(archivo: <span class="cl">string</span>, formato: <span class="cl">string</span>): <span class="cl">string</span> {
+    <span class="kw">const</span> bytes = <span class="kw">this</span>.codec.cargar(archivo);         <span class="ann">// el orden</span>
+    <span class="kw">const</span> pista = <span class="kw">this</span>.audio.extraer(bytes);         <span class="ann">// de los pasos,</span>
+    <span class="kw">const</span> comp  = <span class="kw">this</span>.compresor.comprimir(pista, formato); <span class="ann">// que antes</span>
+    <span class="kw">return this</span>.marca.aplicar(comp);               <span class="ann">// sabía el cliente,</span>
+  }                                                <span class="ann">// ahora vive acá</span>
+}</div>
+          </div>
+        </div>
+
+        <div class="panel lemon pad-sm center" style="grid-column:1/span 12;grid-row:8/span 1;">
+          <p class="body">Sin la fachada, <strong>cada cliente</strong> que quiera convertir un video tiene que conocer las 4 clases, sus métodos y <strong>el orden correcto</strong>. Con la fachada, conoce <mark style="background:var(--ink);color:var(--lemon)">una</mark>.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 08 · RAZONÁ · FACADE vs ADAPTER ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Razoná — Facade vs Adapter</h2>
+          <span class="kicker sm" style="color:var(--lemon)">los dos “envuelven”</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 6;grid-row:2/span 7;">
+          <p class="body" style="margin-bottom:20px;">Adapter (Clase 3) y Facade envuelven otra cosa y le ponen una interfaz por delante. Desempatalos vos:</p>
+          <ul class="clean tight">
+            <li class="body-sm">En <strong>Adapter</strong>, ¿la interfaz que ofrecés la elegís vos o <strong>te la impone</strong> el código que ya existe?</li>
+            <li class="body-sm">En <strong>Facade</strong>, ¿existía <strong>antes</strong> una interfaz que respetar, o la <strong>inventás</strong> vos para que sea cómoda?</li>
+            <li class="body-sm">Adapter envuelve <strong>una</strong> clase; Facade, <strong>muchas</strong>. ¿Por qué esa diferencia es una consecuencia, no la definición?</li>
+          </ul>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:7/span 6;grid-row:2/span 7;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body-sm"><strong>Adapter</strong> existe porque hay una <strong>incompatibilidad</strong>: el cliente ya habla <span class="ic">Pago.pagar()</span> y el SDK habla <span class="ic">createPayment({...})</span>. La interfaz destino <strong>ya estaba dada</strong>; tu trabajo es <strong>traducir</strong>.</p>
+              <p class="body-sm" style="margin-top:12px;"><strong>Facade</strong> existe porque hay <strong>complejidad</strong>: nadie te obliga a nada, <strong>inventás</strong> una interfaz cómoda que <strong>no existía</strong>. Tu trabajo es <strong>simplificar</strong>.</p>
+              <div class="rule" style="margin:16px 0;"></div>
+              <p class="body-sm"><mark>Adapter traduce porque no encaja.</mark> <mark>Facade simplifica porque es engorroso.</mark> (Y <strong>Decorator</strong> ni traduce ni simplifica: <strong>mantiene</strong> la interfaz y <strong>suma</strong>.)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 09 · FACADE · UML ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Facade — UML</h2>
+          <span class="kicker sm" style="color:var(--lemon)">el cliente NO conoce el subsistema</span>
+        </div>
+
+        <div class="panel plain" style="grid-column:1/span 12;grid-row:2/span 7;padding:16px;">
+          <div class="umlstage" style="width:1740px;height:640px;">
+            <svg viewBox="0 0 1740 640" width="1740" height="640">
+              <!-- Client → Facade (una sola flecha de dependencia) -->
+              <line x1="250" y1="300" x2="470" y2="300" stroke="#0A0A0A" stroke-width="2" stroke-dasharray="9 7" marker-end="url(#arw)"/>
+              <!-- Facade → 4 clases del subsistema (asociación) -->
+              <line x1="900" y1="230" x2="1120" y2="120" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+              <line x1="900" y1="270" x2="1120" y2="270" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+              <line x1="900" y1="310" x2="1120" y2="410" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+              <line x1="900" y1="350" x2="1120" y2="540" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+            </svg>
+
+            <div class="umlbox ink" style="left:60px;top:265px;width:190px;">
+              <div class="nm">Client</div>
+            </div>
+
+            <div class="umlbox lem" style="left:470px;top:220px;width:430px;">
+              <div class="stereo">«Facade»</div>
+              <div class="nm">ConversorDeVideo</div>
+              <div class="mem">+ convertir(archivo, formato): string</div>
+            </div>
+
+            <!-- recuadro subsistema -->
+            <div class="umlband" style="left:1105px;top:70px;width:560px;height:520px;">
+              <div class="bandlbl">Subsistema</div>
+            </div>
+            <div class="umlbox" style="left:1120px;top:90px;width:250px;">
+              <div class="nm">Codec</div>
+              <div class="mem">+ cargar(archivo)</div>
+            </div>
+            <div class="umlbox" style="left:1120px;top:235px;width:280px;">
+              <div class="nm">ExtractorAudio</div>
+              <div class="mem">+ extraer(bytes)</div>
+            </div>
+            <div class="umlbox" style="left:1120px;top:380px;width:250px;">
+              <div class="nm">Compresor</div>
+              <div class="mem">+ comprimir(x, fmt)</div>
+            </div>
+            <div class="umlbox" style="left:1120px;top:510px;width:250px;">
+              <div class="nm">MarcaDeAgua</div>
+              <div class="mem">+ aplicar(x)</div>
+            </div>
+
+            <div class="umlrel" style="left:280px;top:270px;">usa</div>
+            <div class="umlnote" style="left:470px;top:440px;width:430px;">El Client tiene <strong>UNA</strong> sola flecha: hacia la fachada. Ninguna lo cruza hacia adentro del subsistema.</div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 10 · CHECKPOINT · LOS 4 ESTRUCTURALES ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Checkpoint — los 4 estructurales</h2>
+          <span class="kicker sm" style="color:var(--lemon)">con Facade se te completan</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <p class="body" style="margin-bottom:18px;">Los cuatro <strong>envuelven o reacomodan</strong>. La pregunta que los separa:</p>
+          <table class="matrix sm">
+            <tr><th style="width:28%">Patrón</th><th>¿Qué le hace a la interfaz?</th></tr>
+            <tr><td class="pat">Adapter</td><td>La <strong>cambia</strong> (traduce)</td></tr>
+            <tr><td class="pat">Decorator</td><td>La <strong>mantiene</strong> y suma</td></tr>
+            <tr><td class="pat">Facade</td><td>Inventa una <strong>nueva y más simple</strong></td></tr>
+            <tr><td class="pat">Composite</td><td>La <strong>comparte</strong> entre hoja y rama</td></tr>
+          </table>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <p class="body" style="margin-bottom:18px;"><em>“Tengo una clase que envuelve a otra…”</em> ¿qué <strong>pregunta</strong> te hacés para saber cuál de los cuatro es?</p>
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body-sm">La pregunta: <strong>¿qué problema tenía el cliente?</strong></p>
+              <ul class="clean tight" style="margin-top:12px;">
+                <li class="body-sm">¿No podía <em>hablarle</em>? → <strong>Adapter</strong></li>
+                <li class="body-sm">¿Quería <em>más</em> de lo mismo? → <strong>Decorator</strong></li>
+                <li class="body-sm">¿Se <em>ahogaba</em> en detalles? → <strong>Facade</strong></li>
+                <li class="body-sm">¿Tenía que recorrer un <em>árbol</em>? → <strong>Composite</strong></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 11 · CoR · INTENCIÓN ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-lg between" style="grid-column:1/span 5;grid-row:1/span 8;">
+          <div>
+            <span class="fampill comp">Comportamiento</span>
+            <div class="kicker" style="color:var(--paper);margin-top:26px;">Patrón 02 / 04 · intención</div>
+          </div>
+          <div class="title" style="font-size:74px;color:var(--paper);">Chain of<br><span style="color:var(--lemon)">Responsi-<br>bility</span></div>
+          <div class="body-sm dim">El emisor <span style="color:var(--lemon)">no sabe</span> quién va a atender.</div>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:6/span 7;grid-row:1/span 5;">
+          <div class="kicker sm dim" style="margin-bottom:18px;">Intención</div>
+          <p class="body-lg">Pasar una petición <mark>a lo largo de una cadena</mark> de manejadores. Cada uno decide si <strong>la procesa</strong> o si <strong>la pasa al siguiente</strong>.</p>
+          <p class="body" style="margin-top:26px;">El emisor <strong>no sabe</strong> quién va a atenderla.</p>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:6/span 7;grid-row:6/span 3;">
+          <div class="kicker sm" style="margin-bottom:14px;">Analogía</div>
+          <p class="body">Un <strong>trámite</strong> en la facultad. Lo presentás en la ventanilla; si no le corresponde, lo pasa al jefe de departamento, y si tampoco, al decano. Vos entregaste <strong>un solo papel</strong> y no sabés (ni te importa) quién lo resolvió.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 12 · PREDECÍ · EL IF ANIDADO QUE CRECE ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Predecí — el <span class="mono">if</span> anidado que crece</h2>
+          <span class="kicker sm">un sistema de aprobación de compras</span>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <div class="code fs20"><span class="kw">interface</span> <span class="cl">Solicitud</span> {
+  monto: <span class="cl">number</span>; autenticado: <span class="cl">boolean</span>; bloqueado: <span class="cl">boolean</span>;
+}
+
+<span class="kw">function</span> aprobar(s: <span class="cl">Solicitud</span>): <span class="cl">string</span> {
+  <span class="kw">if</span> (!s.autenticado) <span class="kw">return</span> <span class="st">"Rechazada: no autenticado"</span>;
+  <span class="kw">else</span> {
+    <span class="kw">if</span> (s.monto &lt;= <span class="cl">0</span>) <span class="kw">return</span> <span class="st">"Rechazada: monto inválido"</span>;
+    <span class="kw">else</span> {
+      <span class="kw">if</span> (s.monto &gt; <span class="cl">100000</span>) <span class="kw">return</span> <span class="st">"Rechazada: supera el límite"</span>;
+      <span class="kw">else</span> {
+        <span class="kw">if</span> (s.bloqueado) <span class="kw">return</span> <span class="st">"Rechazada: bloqueado"</span>;
+        <span class="cm">// ...y seguimos sumando niveles</span>
+      }
+    }
+  }
+  <span class="kw">return</span> <span class="st">"Aprobada"</span>;
+}</div>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <ul class="clean tight">
+            <li class="body-sm">Córdoba necesita <strong>el mismo control pero sin el del límite</strong>; Rosario quiere <strong>uno nuevo al principio</strong>. ¿Copiás la función?</li>
+            <li class="body-sm">¿Y si te piden <strong>cambiar el orden</strong> de los controles?</li>
+            <li class="body-sm">Fijate: <strong>cada <span class="ic">if</span> hace lo mismo</strong> — evalúa una condición y, si pasa, <em>le cede el turno al siguiente</em>. ¿Y si cada control fuera <mark>un objeto que conoce al que le sigue</mark>?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 13 · CoR · SEÑAL DELATORA ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Chain of Responsibility — señal delatora</h2>
+          <span class="kicker sm">sospechalo cuando…</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <ul class="clean">
+            <li class="body">Una petición debe pasar por <strong>una secuencia de pasos/controles/filtros</strong>, y cualquiera puede <strong>cortar</strong> el flujo.</li>
+            <li class="body">El <strong>orden</strong> de esos pasos <strong>cambia</strong> o se <strong>configura</strong>, y se agregan y sacan pasos seguido.</li>
+            <li class="body">El emisor <strong>no debe saber</strong> quién va a atender la petición.</li>
+          </ul>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div class="kicker" style="color:var(--lemon);margin-bottom:24px;">Palabras que lo delatan</div>
+          <div class="t-30 title" style="color:var(--paper);line-height:1.4;">cadena · escalar<br>derivar<br>niveles de aprobación<br>filtros sucesivos<br>middleware<br>“si no puede, que lo pase al siguiente”</div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 14 · CoR · EL CÓDIGO ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Chain of Responsibility — el código</h2>
+          <span class="kicker sm">el orden es un dato, no está cableado</span>
+        </div>
+
+        <div class="panel ink pad-lg" style="grid-column:1/span 12;grid-row:2/span 6;">
+          <div class="codecols">
+            <div class="code fs17 dense"><span class="kw">interface</span> <span class="cl">Solicitud</span> { monto: <span class="cl">number</span>; autenticado: <span class="cl">boolean</span>; }
+
+<span class="kw">abstract class</span> <span class="cl">Handler</span> {
+  <span class="kw">private</span> siguiente: <span class="cl">Handler</span> | <span class="kw">null</span> = <span class="kw">null</span>;
+
+  <span class="cm">// devuelve el handler recibido → permite
+  // encadenar: a.encadenar(b).encadenar(c)</span>
+  encadenar(h: <span class="cl">Handler</span>): <span class="cl">Handler</span> {
+    <span class="kw">this</span>.siguiente = h;
+    <span class="kw">return</span> h;
+  }
+
+  <span class="cm">// si no corté, le paso la solicitud al que
+  // sigue. Sin siguiente = pasó todos.</span>
+  manejar(s: <span class="cl">Solicitud</span>): <span class="cl">string</span> {
+    <span class="kw">return this</span>.siguiente
+      ? <span class="kw">this</span>.siguiente.manejar(s) : <span class="st">"Aprobada"</span>;
+  }
+}</div>
+            <div class="vline"></div>
+            <div class="code fs17 dense"><span class="kw">class</span> <span class="cl">ValidarAutenticacion</span> <span class="kw">extends</span> <span class="cl">Handler</span> {
+  manejar(s: <span class="cl">Solicitud</span>): <span class="cl">string</span> {
+    <span class="kw">if</span> (!s.autenticado) <span class="kw">return</span> <span class="st">"Rechazada: no auth"</span>; <span class="ann">// ← CORTA</span>
+    <span class="kw">return super</span>.manejar(s);                        <span class="ann">// ← SIGUE</span>
+  }
+}
+<span class="kw">class</span> <span class="cl">ValidarMonto</span> <span class="kw">extends</span> <span class="cl">Handler</span> {
+  manejar(s: <span class="cl">Solicitud</span>): <span class="cl">string</span> {
+    <span class="kw">if</span> (s.monto &lt;= <span class="cl">0</span>) <span class="kw">return</span> <span class="st">"Rechazada: monto"</span>;
+    <span class="kw">return super</span>.manejar(s);
+  }
+}
+<span class="kw">class</span> <span class="cl">ValidarLimite</span> <span class="kw">extends</span> <span class="cl">Handler</span> {
+  manejar(s: <span class="cl">Solicitud</span>): <span class="cl">string</span> {
+    <span class="kw">if</span> (s.monto &gt; <span class="cl">100000</span>) <span class="kw">return</span> <span class="st">"Rechazada: límite"</span>;
+    <span class="kw">return super</span>.manejar(s);
+  }
+}
+
+<span class="cm">// Armo la cadena. El ORDEN es un dato:</span>
+<span class="kw">const</span> cadena = <span class="kw">new</span> <span class="cl">ValidarAutenticacion</span>();
+cadena.encadenar(<span class="kw">new</span> <span class="cl">ValidarMonto</span>())
+      .encadenar(<span class="kw">new</span> <span class="cl">ValidarLimite</span>());</div>
+          </div>
+        </div>
+
+        <div class="panel lemon pad-sm center" style="grid-column:1/span 12;grid-row:8/span 1;">
+          <p class="body">La sucursal de Córdoba arma <strong>otra cadena</strong> con los mismos objetos en otro orden. <mark style="background:var(--ink);color:var(--lemon)">Cero código nuevo.</mark></p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 15 · CoR · UML + CONFUSIÓN CON DECORATOR ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">CoR — UML y la confusión con Decorator</h2>
+          <span class="kicker sm" style="color:var(--lemon)">Decorator acumula · CoR descarta</span>
+        </div>
+
+        <div class="panel plain" style="grid-column:1/span 7;grid-row:2/span 7;padding:16px;">
+          <div class="umlstage" style="width:960px;height:730px;">
+            <svg viewBox="0 0 960 730" width="960" height="730">
+              <!-- Client → primer eslabón -->
+              <line x1="120" y1="120" x2="120" y2="60" stroke="#0A0A0A" stroke-width="2" stroke-dasharray="9 7"/>
+              <line x1="120" y1="60" x2="300" y2="60" stroke="#0A0A0A" stroke-width="2" stroke-dasharray="9 7" marker-end="url(#arw)"/>
+              <!-- autorreferencia agregación siguiente -->
+              <path d="M620,120 C720,80 720,175 622,150" fill="none" stroke="#0A0A0A" stroke-width="2.4" marker-start="url(#dhol)"/>
+              <!-- generalización (extends clase abstracta): línea SÓLIDA + triángulo -->
+              <line x1="220" y1="328" x2="400" y2="198" stroke="#0A0A0A" stroke-width="2" marker-end="url(#tri)"/>
+              <line x1="450" y1="328" x2="455" y2="198" stroke="#0A0A0A" stroke-width="2" marker-end="url(#tri)"/>
+              <line x1="685" y1="328" x2="520" y2="198" stroke="#0A0A0A" stroke-width="2" marker-end="url(#tri)"/>
+              <line x1="230" y1="600" x2="290" y2="600" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+              <line x1="470" y1="600" x2="530" y2="600" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+              <line x1="710" y1="600" x2="770" y2="600" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+              <!-- flecha roja: corta -->
+              <line x1="380" y1="640" x2="380" y2="695" stroke="#E5482F" stroke-width="2.4" marker-end="url(#arwr)"/>
+            </svg>
+
+            <div class="umlbox ink" style="left:40px;top:90px;width:160px;"><div class="nm">Client</div></div>
+
+            <div class="umlbox" style="left:300px;top:30px;width:330px;">
+              <div class="stereo">abstract</div>
+              <div class="nm it">Handler</div>
+              <div class="mem">- siguiente: Handler</div>
+              <div class="mem">+ encadenar(h)
++ manejar(s)</div>
+            </div>
+
+            <div class="umlbox" style="left:130px;top:330px;width:180px;"><div class="nm" style="font-size:15px;">ValidarAutenticacion</div></div>
+            <div class="umlbox" style="left:360px;top:330px;width:170px;"><div class="nm" style="font-size:16px;">ValidarMonto</div></div>
+            <div class="umlbox" style="left:600px;top:330px;width:170px;"><div class="nm" style="font-size:16px;">ValidarLimite</div></div>
+
+            <div class="umlrel" style="left:640px;top:95px;">siguiente 0..1</div>
+
+            <!-- tira de flujo -->
+            <div class="flowbox lem" style="left:60px;top:575px;width:170px;height:50px;">Solicitud →</div>
+            <div class="flowbox" style="left:290px;top:575px;width:180px;height:50px;">V. Autenticación</div>
+            <div class="flowbox" style="left:530px;top:575px;width:180px;height:50px;">V. Monto</div>
+            <div class="flowbox ink" style="left:770px;top:575px;width:150px;height:50px;">Aprobada</div>
+            <div class="flowbox rej" style="left:305px;top:690px;width:150px;height:44px;">Rechazada</div>
+            <div class="umlrel" style="left:120px;top:660px;color:var(--red);">cualquier eslabón CORTA</div>
+          </div>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div class="kicker sm dim" style="margin-bottom:16px;">La cátedra compara CoR con Decorator</div>
+          <p class="body-sm" style="margin-bottom:16px;">Los dos arman una <strong>cadena de objetos que se contienen</strong>. La diferencia es la <strong>intención</strong>:</p>
+          <table class="matrix xs duo">
+            <tr><th></th><th>Decorator</th><th>CoR</th></tr>
+            <tr><td class="pat" style="font-size:15px;">Para qué</td><td><strong>Agregar</strong> func.</td><td>Que <strong>atiendan</strong></td></tr>
+            <tr><td class="pat" style="font-size:15px;">¿Todos corren?</td><td><strong>Sí</strong>, suman</td><td><strong>No</strong>: uno corta</td></tr>
+            <tr><td class="pat" style="font-size:15px;">Resultado</td><td>Objeto potenciado</td><td>Petición atendida</td></tr>
+          </table>
+          <p class="body" style="margin-top:18px;text-align:center;"><mark>Decorator acumula; CoR descarta.</mark></p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 16 · TEMPLATE METHOD · INTENCIÓN ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-lg between" style="grid-column:1/span 5;grid-row:1/span 8;">
+          <div>
+            <span class="fampill comp">Comportamiento</span>
+            <div class="kicker" style="color:var(--paper);margin-top:26px;">Patrón 03 / 04 · intención</div>
+          </div>
+          <div class="title" style="font-size:82px;color:var(--paper);">Template<br><span style="color:var(--lemon)">Method</span></div>
+          <div class="body-sm dim">El esqueleto es fijo; <span style="color:var(--lemon)">cambian los rellenos</span>.</div>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:6/span 7;grid-row:1/span 5;">
+          <div class="kicker sm dim" style="margin-bottom:18px;">Intención</div>
+          <p class="body-lg">Definir el <mark>esqueleto de un algoritmo</mark> en una clase base, dejando que las <strong>subclases redefinan algunos pasos</strong> sin cambiar la estructura general.</p>
+          <p class="body-sm" style="margin-top:22px;">Cátedra: <em>“un proceso siempre requiere los mismos pasos, pero admitiendo variaciones en la implementación, delegables a subclases”</em>.</p>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:6/span 7;grid-row:6/span 3;">
+          <div class="kicker sm" style="margin-bottom:14px;">Analogía</div>
+          <p class="body">Una <strong>receta base de torta</strong>. Batir, mezclar, hornear 40 min, desmoldar. Los pasos y <strong>el orden</strong> no cambian. Lo que cambia es <strong>con qué</strong> la rellenás: chocolate, vainilla, limón. Nadie hornea antes de mezclar.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 17 · RAZONÁ · QUÉ SE REPITE Y QUÉ VARÍA ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Razoná — ¿qué se repite y qué varía?</h2>
+          <span class="kicker sm" style="color:var(--lemon)">importar alumnos: CSV vs JSON</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 5;grid-row:2/span 7;">
+          <div class="kicker sm dim" style="margin-bottom:18px;">Los dos importadores hacen esto</div>
+          <ol class="num">
+            <li class="body">leer el archivo</li>
+            <li class="body">parsear el contenido</li>
+            <li class="body">validar que haya datos</li>
+            <li class="body">guardar en la base</li>
+            <li class="body">devolver “importados N”</li>
+          </ol>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:6/span 3;grid-row:2/span 7;">
+          <ul class="clean tight">
+            <li class="body-sm">¿Cuáles pasos son <strong>idénticos</strong> y cuáles <strong>cambian</strong>?</li>
+            <li class="body-sm">Si escribís dos clases separadas, ¿cuánto <strong>duplicás</strong>?</li>
+            <li class="body-sm">Si el <strong>orden</strong> hay que <strong>proteger</strong> — que nadie guarde sin validar — ¿dónde lo ponés para que una subclase <strong>no lo rompa</strong>?</li>
+          </ul>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:9/span 4;grid-row:2/span 7;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body">El <strong>orden vive en la clase base</strong>, en un método que <strong>no se redefine</strong> (el <em>template method</em>).</p>
+              <p class="body" style="margin-top:16px;">Solo los <mark>agujeros</mark> (leer, parsear) quedan abstractos para que la subclase los rellene.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 18 · TEMPLATE METHOD · SEÑAL DELATORA ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Template Method — señal delatora</h2>
+          <span class="kicker sm">sospechalo cuando…</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <ul class="clean">
+            <li class="body">Hay un <strong>procedimiento fijo</strong> con <strong>pasos que varían</strong> según el caso: importar datos, generar un reporte, procesar un pago, correr un test.</li>
+            <li class="body">Varias clases hacen <strong>casi lo mismo</strong>, y la diferencia está en <strong>2 o 3 pasos</strong> en el medio.</li>
+            <li class="body">El enunciado dice: <em>“el procedimiento es siempre el mismo”</em>, <em>“los mismos pasos”</em>, <em>“la estructura no cambia, cambia la implementación de algunos pasos”</em>.</li>
+          </ul>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div class="kicker" style="color:var(--lemon);margin-bottom:24px;">La herramienta</div>
+          <div class="t-44 title" style="color:var(--paper);line-height:1.15;"><mark style="background:var(--lemon);color:var(--ink)">Herencia</mark></div>
+          <p class="body-sm dim" style="color:var(--paper);margin-top:22px;">Los pasos se redefinen; el esqueleto <strong>no</strong>. Es la gran diferencia con Strategy, que usa composición.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 19 · TEMPLATE METHOD · EL CÓDIGO ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Template Method — el código</h2>
+          <span class="kicker sm">el orden está blindado en la clase base</span>
+        </div>
+
+        <div class="panel ink pad-lg" style="grid-column:1/span 12;grid-row:2/span 6;">
+          <div class="codecols">
+            <div class="code fs17 dense"><span class="kw">abstract class</span> <span class="cl">ImportadorDeDatos</span> {
+
+  <span class="cm">// EL TEMPLATE METHOD: acá vive el ORDEN.
+  // No es abstracto y NO se redefine.</span>
+  importar(ruta: <span class="cl">string</span>): <span class="cl">string</span> {
+    <span class="kw">const</span> crudo = <span class="kw">this</span>.leer(ruta);       <span class="ann">// VARIABLE</span>
+    <span class="kw">const</span> datos = <span class="kw">this</span>.parsear(crudo);   <span class="ann">// VARIABLE</span>
+    <span class="kw">if</span> (!<span class="kw">this</span>.validar(datos)) <span class="kw">return</span> <span class="st">"Inválidos"</span>; <span class="ann">// hook</span>
+    <span class="kw">this</span>.persistir(datos);              <span class="ann">// FIJO</span>
+    <span class="kw">return</span> `Importados ${datos.length}`;
+  }
+
+  <span class="cm">// los agujeros que la subclase DEBE rellenar</span>
+  <span class="kw">protected abstract</span> leer(ruta: <span class="cl">string</span>): <span class="cl">string</span>;
+  <span class="kw">protected abstract</span> parsear(c: <span class="cl">string</span>): <span class="cl">string</span>[];
+
+  <span class="cm">// "hook": default, la subclase PUEDE cambiarlo</span>
+  <span class="kw">protected</span> validar(d: <span class="cl">string</span>[]): <span class="cl">boolean</span> { <span class="kw">return</span> d.length &gt; <span class="cl">0</span>; }
+
+  <span class="cm">// paso común: se escribe UNA sola vez, acá</span>
+  <span class="kw">private</span> persistir(d: <span class="cl">string</span>[]): <span class="cl">void</span> {
+    console.log(`Guardando ${d.length} filas...`);
+  }
+}</div>
+            <div class="vline"></div>
+            <div class="code fs17 dense"><span class="kw">class</span> <span class="cl">ImportadorCSV</span> <span class="kw">extends</span> <span class="cl">ImportadorDeDatos</span> {
+  <span class="kw">protected</span> leer(ruta: <span class="cl">string</span>): <span class="cl">string</span> {
+    <span class="kw">return</span> <span class="st">"nombre,edad\nTomas,22\nAna,25"</span>;
+  }
+  <span class="kw">protected</span> parsear(c: <span class="cl">string</span>): <span class="cl">string</span>[] {
+    <span class="kw">return</span> c.split(<span class="st">"\n"</span>).slice(<span class="cl">1</span>);  <span class="cm">// salteo encabezado</span>
+  }
+}
+
+<span class="kw">class</span> <span class="cl">ImportadorJSON</span> <span class="kw">extends</span> <span class="cl">ImportadorDeDatos</span> {
+  <span class="kw">protected</span> leer(ruta: <span class="cl">string</span>): <span class="cl">string</span> {
+    <span class="kw">return</span> <span class="st">'[{"nombre":"Tomas"},{"nombre":"Ana"}]'</span>;
+  }
+  <span class="kw">protected</span> parsear(c: <span class="cl">string</span>): <span class="cl">string</span>[] {
+    <span class="kw">return</span> <span class="cl">JSON</span>.parse(c).map((o: <span class="cl">any</span>) =&gt; o.nombre);
+  }
+  <span class="kw">protected</span> validar(d: <span class="cl">string</span>[]): <span class="cl">boolean</span> {
+    <span class="kw">return</span> d.length &gt; <span class="cl">1</span>;   <span class="cm">// este hook lo pisa</span>
+  }
+}
+
+console.log(<span class="kw">new</span> <span class="cl">ImportadorCSV</span>().importar(<span class="st">"a.csv"</span>));
+<span class="cm">// Importados 2</span>
+console.log(<span class="kw">new</span> <span class="cl">ImportadorJSON</span>().importar(<span class="st">"a.json"</span>));
+<span class="cm">// Importados 2</span></div>
+          </div>
+        </div>
+
+        <div class="panel lemon pad-sm center" style="grid-column:1/span 12;grid-row:8/span 1;">
+          <p class="body"><span class="ic">importar()</span> es <strong>la única puerta</strong>. Ninguna subclase puede persistir sin validar, ni parsear antes de leer: <mark style="background:var(--ink);color:var(--lemon)">el orden está blindado en la clase base.</mark></p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 20 · TEMPLATE METHOD · UML + CONFUSIÓN CON STRATEGY ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Template Method — UML y la confusión con Strategy</h2>
+          <span class="kicker sm" style="color:var(--lemon)">herencia vs composición</span>
+        </div>
+
+        <div class="panel plain" style="grid-column:1/span 7;grid-row:2/span 7;padding:16px;">
+          <div class="umlstage" style="width:960px;height:720px;">
+            <svg viewBox="0 0 960 720" width="960" height="720">
+              <!-- generalización (extends clase abstracta): línea SÓLIDA + triángulo -->
+              <line x1="245" y1="468" x2="410" y2="236" stroke="#0A0A0A" stroke-width="2" marker-end="url(#tri)"/>
+              <line x1="665" y1="468" x2="500" y2="236" stroke="#0A0A0A" stroke-width="2" marker-end="url(#tri)"/>
+            </svg>
+
+            <div class="umlbox" style="left:250px;top:30px;width:430px;">
+              <div class="stereo">abstract</div>
+              <div class="nm it">ImportadorDeDatos</div>
+              <div class="mem"><span class="hl">+ importar(ruta)   ← TEMPLATE METHOD</span>
+# leer(ruta)      <span class="abs">« abstracto »</span>
+# parsear(crudo)  <span class="abs">« abstracto »</span>
+# validar(datos)  <span class="abs">« hook: default »</span>
+- persistir(d)    <span class="abs">« privado, fijo »</span></div>
+            </div>
+
+            <div class="umlbox" style="left:130px;top:470px;width:230px;">
+              <div class="nm">ImportadorCSV</div>
+              <div class="mem"># leer()
+# parsear()</div>
+            </div>
+            <div class="umlbox" style="left:540px;top:470px;width:250px;">
+              <div class="nm">ImportadorJSON</div>
+              <div class="mem"># leer()
+# parsear()
+# validar()</div>
+            </div>
+
+            <div class="umlnote" style="left:250px;top:635px;width:540px;">La <strong>clase base llama a la subclase</strong> (los pasos se redefinen); el <strong>esqueleto NO</strong> se toca. Se decide en <strong>compilación</strong>, eligiendo la subclase.</div>
+          </div>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div class="kicker sm dim" style="margin-bottom:16px;">El otro par clásico</div>
+          <table class="matrix xs duo">
+            <tr><th></th><th>Template M.</th><th>Strategy</th></tr>
+            <tr><td class="pat" style="font-size:14px;">Herramienta</td><td><strong>Herencia</strong></td><td><strong>Composición</strong></td></tr>
+            <tr><td class="pat" style="font-size:14px;">Qué varía</td><td>Algunos pasos</td><td>El algoritmo entero</td></tr>
+            <tr><td class="pat" style="font-size:14px;">Se decide</td><td>Compilación</td><td>Runtime</td></tr>
+            <tr><td class="pat" style="font-size:14px;">Quién manda</td><td>La base llama</td><td>El cliente pasa</td></tr>
+          </table>
+          <p class="body-sm" style="margin-top:18px;"><mark>Esqueleto fijo + rellenos → Template Method.</mark> <mark>Algoritmo entero intercambiable en caliente → Strategy.</mark></p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 21 · STATE · INTENCIÓN ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-lg between" style="grid-column:1/span 5;grid-row:1/span 8;">
+          <div>
+            <span class="fampill comp">Comportamiento</span>
+            <div class="kicker" style="color:var(--paper);margin-top:26px;">Patrón 04 / 04 · intención</div>
+          </div>
+          <div class="title" style="font-size:118px;color:var(--paper);">Sta<span style="color:var(--lemon)">te</span></div>
+          <div class="body-sm dim">Cada estado es <span style="color:var(--lemon)">una clase</span>. El contexto delega.</div>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:6/span 7;grid-row:1/span 5;">
+          <div class="kicker sm dim" style="margin-bottom:18px;">Intención</div>
+          <p class="body-lg">Permitir que un objeto <mark>cambie su comportamiento cuando cambia su estado interno</mark>. Da la sensación de que el objeto <strong>cambió de clase</strong>.</p>
+          <p class="body" style="margin-top:24px;">El objeto principal (el <strong>contexto</strong>) <strong>delega</strong> en el objeto-estado que tiene puesto en ese momento.</p>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:6/span 7;grid-row:6/span 3;">
+          <div class="kicker sm" style="margin-bottom:14px;">Analogía</div>
+          <p class="body">Un <strong>semáforo</strong>. En rojo, “avanzar” no hace nada. En verde, te deja pasar. Es el mismo objeto, pero <strong>responde distinto</strong> según su estado — y <strong>él mismo sabe</strong> a qué estado le toca ir después.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 22 · PARÁ Y PENSÁ · EL SWITCH DE ESTADOS ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Pará y pensá — el <span class="mono">switch</span> de estados</h2>
+          <span class="kicker sm">Nuevo → Pagado → Enviado</span>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <div class="code fs19"><span class="kw">class</span> <span class="cl">Pedido</span> {
+  <span class="kw">private</span> estado = <span class="st">"nuevo"</span>;
+
+  pagar() {
+    <span class="kw">switch</span> (<span class="kw">this</span>.estado) {
+      <span class="kw">case</span> <span class="st">"nuevo"</span>:   <span class="kw">this</span>.estado = <span class="st">"pagado"</span>; <span class="kw">break</span>;
+      <span class="kw">case</span> <span class="st">"pagado"</span>:  console.log(<span class="st">"ya pagado"</span>); <span class="kw">break</span>;
+      <span class="kw">case</span> <span class="st">"enviado"</span>: console.log(<span class="st">"ya enviado"</span>); <span class="kw">break</span>;
+    }
+  }
+  enviar() {
+    <span class="kw">switch</span> (<span class="kw">this</span>.estado) {   <span class="ann">// el MISMO switch, otra vez</span>
+      <span class="kw">case</span> <span class="st">"nuevo"</span>:   console.log(<span class="st">"no se puede sin pagar"</span>); <span class="kw">break</span>;
+      <span class="kw">case</span> <span class="st">"pagado"</span>:  <span class="kw">this</span>.estado = <span class="st">"enviado"</span>; <span class="kw">break</span>;
+      <span class="kw">case</span> <span class="st">"enviado"</span>: console.log(<span class="st">"ya enviado"</span>); <span class="kw">break</span>;
+    }
+  }
+  cancelar() { <span class="cm">/* ... y otro switch idéntico */</span> }
+}</div>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <ul class="clean tight">
+            <li class="body-sm">Entra un estado nuevo (<strong>“en preparación”</strong>). ¿Cuántos <span class="ic">switch</span> tocás? ¿Y si te olvidás de uno? ¿El compilador te avisa?</li>
+            <li class="body-sm">La regla <em>“de Pagado solo se pasa a Enviado”</em>, ¿está en <strong>un</strong> lugar o <strong>desparramada</strong> por todos los <span class="ic">switch</span>?</li>
+            <li class="body-sm">Si <strong>cada estado fuera una clase</strong>, ¿qué métodos tendría? ¿Y <strong>quién</strong> decidiría el siguiente estado?</li>
+          </ul>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 23 · STATE · SEÑAL DELATORA ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">State — señal delatora</h2>
+          <span class="kicker sm">sospechalo cuando…</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <ul class="clean">
+            <li class="body">El objeto tiene un <strong>ciclo de vida</strong> con <strong>etapas</strong> y <strong>lo que se puede hacer depende de la etapa</strong>: pedido, ticket, reproductor (play/pausa/stop), documento (borrador/revisión/publicado), cajero.</li>
+            <li class="body">Ves <strong>el mismo <span class="ic">switch (estado)</span> repetido</strong> en varios métodos.</li>
+            <li class="body">Hay <strong>transiciones con reglas</strong>: <em>“de acá solo se puede pasar a…”</em>.</li>
+          </ul>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div class="kicker" style="color:var(--lemon);margin-bottom:24px;">Palabras que lo delatan</div>
+          <div class="t-36 title" style="color:var(--paper);line-height:1.35;">estado · etapa · flujo<br>“según en qué<br>situación esté”<br>“no se puede X<br>hasta que Y”<br>máquina de estados</div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 24 · STATE · EL CÓDIGO ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">State — el código</h2>
+          <span class="kicker sm">el contexto no tiene ni un if</span>
+        </div>
+
+        <div class="panel ink pad-lg" style="grid-column:1/span 12;grid-row:2/span 6;">
+          <div class="codecols">
+            <div class="code fs17 dense"><span class="cm">// Cada estado sabe DOS cosas: qué se puede
+// hacer, y a qué estado se pasa después.</span>
+<span class="kw">interface</span> <span class="cl">EstadoPedido</span> {
+  nombre(): <span class="cl">string</span>;
+  pagar(p: <span class="cl">Pedido</span>): <span class="cl">void</span>;
+  enviar(p: <span class="cl">Pedido</span>): <span class="cl">void</span>;
+}
+
+<span class="cm">// El CONTEXTO: no tiene ni un solo if.
+// Delega todo en su estado actual.</span>
+<span class="kw">class</span> <span class="cl">Pedido</span> {
+  <span class="kw">private</span> estado: <span class="cl">EstadoPedido</span> = <span class="kw">new</span> <span class="cl">Nuevo</span>();
+
+  cambiarEstado(e: <span class="cl">EstadoPedido</span>): <span class="cl">void</span> { <span class="kw">this</span>.estado = e; }
+
+  pagar():  <span class="cl">void</span> { <span class="kw">this</span>.estado.pagar(<span class="kw">this</span>); }   <span class="ann">// delega</span>
+  enviar(): <span class="cl">void</span> { <span class="kw">this</span>.estado.enviar(<span class="kw">this</span>); }  <span class="ann">// delega</span>
+  estadoActual(): <span class="cl">string</span> { <span class="kw">return this</span>.estado.nombre(); }
+}
+
+<span class="kw">const</span> p = <span class="kw">new</span> <span class="cl">Pedido</span>();
+p.enviar();  <span class="cm">// No se puede enviar sin pagar.</span>
+p.pagar();   <span class="cm">// Pago recibido.  → ahora es Pagado</span>
+p.enviar();  <span class="cm">// Pedido despachado. → ahora Enviado</span></div>
+            <div class="vline"></div>
+            <div class="code fs17 dense"><span class="kw">class</span> <span class="cl">Nuevo</span> <span class="kw">implements</span> <span class="cl">EstadoPedido</span> {
+  nombre() { <span class="kw">return</span> <span class="st">"Nuevo"</span>; }
+  pagar(p: <span class="cl">Pedido</span>)  {
+    console.log(<span class="st">"Pago recibido."</span>);
+    p.cambiarEstado(<span class="kw">new</span> <span class="cl">Pagado</span>());     <span class="ann">// ← transición</span>
+  }
+  enviar(p: <span class="cl">Pedido</span>) { console.log(<span class="st">"No se puede sin pagar."</span>); }
+}
+
+<span class="kw">class</span> <span class="cl">Pagado</span> <span class="kw">implements</span> <span class="cl">EstadoPedido</span> {
+  nombre() { <span class="kw">return</span> <span class="st">"Pagado"</span>; }
+  pagar(p: <span class="cl">Pedido</span>)  { console.log(<span class="st">"Ya está pagado."</span>); }
+  enviar(p: <span class="cl">Pedido</span>) {
+    console.log(<span class="st">"Pedido despachado."</span>);
+    p.cambiarEstado(<span class="kw">new</span> <span class="cl">Enviado</span>());
+  }
+}
+
+<span class="kw">class</span> <span class="cl">Enviado</span> <span class="kw">implements</span> <span class="cl">EstadoPedido</span> {
+  nombre() { <span class="kw">return</span> <span class="st">"Enviado"</span>; }
+  pagar(p: <span class="cl">Pedido</span>)  { console.log(<span class="st">"Ya está pagado."</span>); }
+  enviar(p: <span class="cl">Pedido</span>) { console.log(<span class="st">"Ya fue enviado."</span>); }
+}</div>
+          </div>
+        </div>
+
+        <div class="panel lemon pad-sm center" style="grid-column:1/span 12;grid-row:8/span 1;">
+          <p class="body">Estado nuevo (<span class="ic">EnPreparacion</span>) = <strong>una clase nueva</strong>. <span class="ic">Pedido</span> <strong>no se toca</strong>. Y la regla <em>“de Pagado se pasa a Enviado”</em> está <mark style="background:var(--ink);color:var(--lemon)">en un solo lugar</mark>: adentro de <span class="ic">Pagado</span>.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 25 · STATE · UML ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">State — UML</h2>
+          <span class="kicker sm" style="color:var(--lemon)">la flecha de vuelta es la firma de State</span>
+        </div>
+
+        <div class="panel plain" style="grid-column:1/span 12;grid-row:2/span 7;padding:16px;">
+          <div class="umlstage" style="width:1740px;height:640px;">
+            <svg viewBox="0 0 1740 640" width="1740" height="640">
+              <!-- Pedido compone EstadoPedido -->
+              <line x1="400" y1="180" x2="620" y2="180" stroke="#0A0A0A" stroke-width="2.4" marker-start="url(#dfill)" marker-end="url(#arw)"/>
+              <!-- realizaciones (implements interfaz): punteada + triángulo -->
+              <line x1="720" y1="438" x2="720" y2="248" stroke="#0A0A0A" stroke-width="2" stroke-dasharray="9 7" marker-end="url(#tri)"/>
+              <line x1="920" y1="438" x2="810" y2="248" stroke="#0A0A0A" stroke-width="2" stroke-dasharray="9 7" marker-end="url(#tri)"/>
+              <line x1="1120" y1="438" x2="890" y2="248" stroke="#0A0A0A" stroke-width="2" stroke-dasharray="9 7" marker-end="url(#tri)"/>
+              <!-- flechas de vuelta: cada estado cambiarEstado(new...) -->
+              <path d="M720,560 C400,600 200,470 190,300" fill="none" stroke="#0A0A0A" stroke-width="1.8" stroke-dasharray="6 6" marker-end="url(#arw)"/>
+            </svg>
+
+            <div class="umlbox ink" style="left:150px;top:120px;width:260px;">
+              <div class="nm">Pedido <span class="abs">(contexto)</span></div>
+              <div class="mem">- estado: EstadoPedido</div>
+              <div class="mem">+ pagar() / + enviar()
++ cambiarEstado(e)
++ estadoActual()</div>
+            </div>
+
+            <div class="umlbox" style="left:620px;top:120px;width:290px;">
+              <div class="stereo">«interface»</div>
+              <div class="nm it">EstadoPedido</div>
+              <div class="mem">+ nombre()
++ pagar(p) / + enviar(p)</div>
+            </div>
+
+            <div class="umlbox lem" style="left:640px;top:440px;width:160px;"><div class="nm">Nuevo</div></div>
+            <div class="umlbox lem" style="left:840px;top:440px;width:170px;"><div class="nm">Pagado</div></div>
+            <div class="umlbox lem" style="left:1050px;top:440px;width:170px;"><div class="nm">Enviado</div></div>
+
+            <div class="umlrel onpaper" style="left:470px;top:150px;">estado</div>
+            <div class="umlrel" style="left:230px;top:430px;color:var(--ink);">cambiarEstado(new ...)</div>
+
+            <!-- mini máquina de estados -->
+            <div class="umlband" style="left:1300px;top:120px;width:400px;height:400px;">
+              <div class="bandlbl">Máquina de estados</div>
+            </div>
+            <div class="flowbox" style="left:1360px;top:170px;width:130px;height:56px;border-radius:50%;">Nuevo</div>
+            <div class="flowbox" style="left:1520px;top:290px;width:130px;height:56px;border-radius:50%;">Pagado</div>
+            <div class="flowbox" style="left:1360px;top:410px;width:130px;height:56px;border-radius:50%;">Enviado</div>
+            <div class="umlrel onpaper" style="left:1470px;top:225px;">pagar()</div>
+            <div class="umlrel onpaper" style="left:1470px;top:365px;">enviar()</div>
+            <svg viewBox="0 0 400 400" width="400" height="400" style="position:absolute;left:1300px;top:120px;">
+              <line x1="140" y1="90" x2="220" y2="140" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+              <line x1="220" y1="200" x2="140" y2="250" stroke="#0A0A0A" stroke-width="2" marker-end="url(#arw)"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 26 · STATE vs STRATEGY ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">State vs Strategy — el par que más se confunde</h2>
+          <span class="kicker sm" style="color:var(--lemon)">el mismo UML, patrones distintos</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 5;grid-row:2/span 7;">
+          <p class="body" style="margin-bottom:18px;">Los dos: un contexto que compone una interfaz, y varias clases que la implementan. Buscá vos las diferencias:</p>
+          <ul class="clean tight">
+            <li class="body-sm">¿Quién decide <strong>cuál</strong> clase concreta se usa? ¿De dónde sale la estrategia? ¿Y el estado siguiente?</li>
+            <li class="body-sm">¿<span class="ic">EnvioExpress</span> <strong>sabe</strong> que existe <span class="ic">EnvioEstandar</span>? ¿<span class="ic">Pagado</span> sabe que existe <span class="ic">Enviado</span>?</li>
+            <li class="body-sm">¿Un <span class="ic">Pedido</span> en estado <span class="ic">Nuevo</span> <strong>prohíbe</strong> alguna operación?</li>
+          </ul>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:6/span 7;grid-row:2/span 7;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <table class="matrix xs duo">
+                <tr><th></th><th>Strategy</th><th>State</th></tr>
+                <tr><td class="pat" style="font-size:14px;">Qué representa</td><td><strong>Cómo</strong> hacer algo</td><td><strong>En qué</strong> situación</td></tr>
+                <tr><td class="pat" style="font-size:14px;">Quién elige</td><td>El cliente, afuera</td><td>El estado, adentro</td></tr>
+                <tr><td class="pat" style="font-size:14px;">¿Se conocen?</td><td><strong>No</strong></td><td><strong>Sí</strong> (Pagado→Enviado)</td></tr>
+                <tr><td class="pat" style="font-size:14px;">Transiciones</td><td>No hay</td><td>Orden permitido</td></tr>
+              </table>
+              <p class="body-sm" style="margin-top:14px;"><mark>¿Hay reglas sobre a qué se puede pasar después?</mark> Si sí → <strong>State</strong>. Si cualquiera vale en cualquier momento → <strong>Strategy</strong>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 27 · LOS 13 COMPLETOS ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Los 13 completos</h2>
+          <span class="kicker sm">catálogo cerrado</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 12;grid-row:2/span 5;">
+          <table class="matrix">
+            <tr><th style="width:26%">Familia</th><th>Patrones</th></tr>
+            <tr><td class="pat">Creacionales <span class="mono dim">(4)</span></td><td>Singleton · Factory Method · Abstract Factory · Builder</td></tr>
+            <tr><td class="pat">Estructurales <span class="mono dim">(4)</span></td><td>Adapter · Composite · Decorator · <mark>Facade</mark></td></tr>
+            <tr><td class="pat">Comportamiento <span class="mono dim">(5)</span></td><td>Strategy · Observer · <mark>Chain of Responsibility</mark> · <mark>Template Method</mark> · <mark>State</mark></td></tr>
+          </table>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:1/span 12;grid-row:7/span 2;">
+          <p class="body-lg" style="color:var(--paper);">A partir de acá <strong>no sumamos teoría</strong>. Todo lo que queda es entrenar el ojo: <mark style="background:var(--lemon);color:var(--ink)">reconocer, elegir y desempatar</mark>. Empezamos por lo que más puntos da y más se confunde: los <strong>pares</strong>.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 28 · SECCIÓN: PARES QUE SE CONFUNDEN ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-xl between" style="grid-column:1/span 7;grid-row:1/span 8;">
+          <div class="kicker">La otra mitad de la clase</div>
+          <div>
+            <h2 class="title t-88">Pares que<br>se<br>confunden</h2>
+            <p class="body-lg" style="margin-top:26px;">Acertar el nombre <strong>no alcanza</strong>: casi siempre hay un patrón parecido que también “casi encaja”. El punto está en saber <strong>por qué no es ese</strong>.</p>
+          </div>
+          <p class="body">5 pares (y tríos), cada uno con un mini-caso para que desempates vos.</p>
+        </div>
+
+        <div class="panel ink pad-xl center" style="grid-column:8/span 5;grid-row:1/span 8;">
+          <div class="kicker" style="color:var(--lemon);margin-bottom:30px;">La regla de oro</div>
+          <p class="body-lg" style="color:var(--paper);">No compares las <strong>estructuras</strong> — los UML se parecen. Compará las <mark style="background:var(--lemon);color:var(--ink)">intenciones</mark>.</p>
+          <p class="body" style="color:var(--lemon);margin-top:30px;">¿Qué problema tenía el cliente?</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 29 · PAR 1 · FM vs AF vs BUILDER ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Par 1 — Factory Method vs Abstract Factory vs Builder</h2>
+          <span class="kicker sm" style="color:var(--lemon)">los tres fabrican</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 12;grid-row:2/span 3;">
+          <table class="matrix xs">
+            <tr><th style="width:16%"></th><th>Factory Method</th><th>Abstract Factory</th><th>Builder</th></tr>
+            <tr><td class="pat" style="font-size:15px;">Qué produce</td><td><strong>Un</strong> producto, variantes</td><td>Una <strong>familia</strong> coherente</td><td><strong>Un</strong> producto complejo, por partes</td></tr>
+            <tr><td class="pat" style="font-size:15px;">El problema</td><td>“¿qué clase instancio?”</td><td>“¿todo del mismo juego?”</td><td>“constructor de 10 parámetros”</td></tr>
+            <tr><td class="pat" style="font-size:15px;">Palabra clave</td><td>variante, tipo</td><td>familia, no se mezclan</td><td>paso a paso, opcional</td></tr>
+          </table>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 6;grid-row:5/span 4;">
+          <div class="tag on sm" style="align-self:flex-start;margin-bottom:14px;">Mini-caso</div>
+          <p class="body">“El sistema exporta a PDF, a Word o a HTML según lo que elija el usuario; en los tres casos es <strong>un solo documento</strong> de salida.”</p>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:7/span 6;grid-row:5/span 4;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ Factory Method.</strong> <strong>Un</strong> producto (el documento) con <strong>variantes</strong> (PDF/Word/HTML).</p>
+              <p class="body-sm" style="margin-top:12px;">No es Abstract Factory: no hay una <em>familia</em> de productos que deban ser coherentes entre sí. No es Builder: no lo armás <em>por partes opcionales</em>, elegís una variante entera.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 30 · PAR 2 · ADAPTER vs DECORATOR vs FACADE ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Par 2 — Adapter vs Decorator vs Facade</h2>
+          <span class="kicker sm" style="color:var(--lemon)">los tres envuelven</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 12;grid-row:2/span 3;">
+          <table class="matrix xs">
+            <tr><th style="width:18%"></th><th>Adapter</th><th>Decorator</th><th>Facade</th></tr>
+            <tr><td class="pat" style="font-size:15px;">A la interfaz</td><td>La <strong>cambia</strong> (traduce)</td><td>La <strong>mantiene</strong> y suma</td><td>Inventa una <strong>nueva y simple</strong></td></tr>
+            <tr><td class="pat" style="font-size:15px;">Por qué existe</td><td>Dos interfaces <strong>no encajan</strong></td><td>Querés <strong>más</strong>, combinable</td><td>El subsistema es <strong>engorroso</strong></td></tr>
+            <tr><td class="pat" style="font-size:15px;">A cuántos</td><td><strong>Una</strong> clase</td><td><strong>Una</strong>, apilable</td><td><strong>Muchas</strong></td></tr>
+          </table>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 6;grid-row:5/span 4;">
+          <div class="tag on sm" style="align-self:flex-start;margin-bottom:14px;">Mini-caso</div>
+          <p class="body">“Uso una librería de pagos con 8 clases y un orden complicado; quiero que mi código llame a <span class="ic">cobrar(monto)</span> y listo, y la interfaz <span class="ic">cobrar</span> <strong>la invento yo</strong>.”</p>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:7/span 6;grid-row:5/span 4;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ Facade.</strong> Pista: <em>“la interfaz la invento yo”</em> (no me la impone nadie → no es Adapter) y <em>“8 clases + orden complicado”</em> (escondo un subsistema → no es Decorator).</p>
+              <p class="body-sm" style="margin-top:12px;"><mark>Adapter traduce; Facade simplifica; Decorator acumula.</mark></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 31 · PAR 3 · CoR vs DECORATOR ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Par 3 — Chain of Responsibility vs Decorator</h2>
+          <span class="kicker sm" style="color:var(--lemon)">la trampa favorita de la cátedra</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 12;grid-row:2/span 3;">
+          <table class="matrix sm duo">
+            <tr><th style="width:26%"></th><th>Decorator</th><th>Chain of Responsibility</th></tr>
+            <tr><td class="pat">¿Se ejecutan todos?</td><td><strong>Sí</strong>, cada capa <strong>suma</strong></td><td><strong>No</strong>, uno puede <strong>cortar</strong></td></tr>
+            <tr><td class="pat">Intención</td><td><strong>Potenciar</strong> el objeto</td><td>Que <strong>alguien atienda</strong></td></tr>
+            <tr><td class="pat">Resultado</td><td>Objeto con más features</td><td>Petición resuelta por <strong>uno</strong></td></tr>
+          </table>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 6;grid-row:5/span 4;">
+          <div class="tag on sm" style="align-self:flex-start;margin-bottom:14px;">Mini-caso</div>
+          <p class="body">“Cada request pasa por: autenticación, permisos y rate limit. <strong>Si alguno falla</strong>, la request se rechaza y los siguientes <strong>no corren</strong>.”</p>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:7/span 6;grid-row:5/span 4;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ Chain of Responsibility.</strong> <em>“si alguno falla… los siguientes no corren”</em> es la firma: <strong>alguien corta la cadena</strong>.</p>
+              <p class="body-sm" style="margin-top:12px;">En Decorator <strong>todas</strong> las capas se ejecutan y suman. <mark>Decorator acumula; CoR descarta.</mark></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 32 · PAR 4 · STRATEGY vs STATE ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Par 4 — Strategy vs State</h2>
+          <span class="kicker sm" style="color:var(--lemon)">UML idéntico, intención opuesta</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 12;grid-row:2/span 3;">
+          <table class="matrix sm duo">
+            <tr><th style="width:30%"></th><th>Strategy</th><th>State</th></tr>
+            <tr><td class="pat">Qué representa</td><td><strong>Cómo</strong> hacer algo</td><td><strong>En qué etapa</strong> estoy</td></tr>
+            <tr><td class="pat">Quién elige la clase</td><td><strong>El cliente</strong>, afuera</td><td><strong>El estado</strong>, adentro</td></tr>
+            <tr><td class="pat">¿Transiciones con reglas?</td><td>No</td><td><strong>Sí</strong></td></tr>
+          </table>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 6;grid-row:5/span 4;">
+          <div class="tag on sm" style="align-self:flex-start;margin-bottom:14px;">Mini-caso</div>
+          <p class="body">“Un documento está en Borrador, En revisión o Publicado. Desde Borrador se puede mandar a revisión, pero <strong>no publicar directo</strong>. Cada acción hace algo distinto según el estado.”</p>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:7/span 6;grid-row:5/span 4;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ State.</strong> Hay <strong>ciclo de vida</strong> con <strong>transiciones prohibidas</strong> (<em>“no publicar directo”</em>), y el próximo estado lo decide el estado actual.</p>
+              <p class="body-sm" style="margin-top:12px;"><mark>¿Hay reglas sobre a qué se puede pasar después?</mark> En Strategy cualquier algoritmo vale en cualquier momento.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 33 · PAR 5 · TEMPLATE METHOD vs STRATEGY ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Par 5 — Template Method vs Strategy</h2>
+          <span class="kicker sm" style="color:var(--lemon)">se diferencian por la herramienta</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 12;grid-row:2/span 3;">
+          <table class="matrix sm duo">
+            <tr><th style="width:26%"></th><th>Template Method</th><th>Strategy</th></tr>
+            <tr><td class="pat">Herramienta</td><td><strong>Herencia</strong> (subclases)</td><td><strong>Composición</strong> (le paso un objeto)</td></tr>
+            <tr><td class="pat">Qué varía</td><td><strong>Algunos pasos</strong> de un algoritmo fijo</td><td><strong>El algoritmo entero</strong></td></tr>
+            <tr><td class="pat">Cuándo se decide</td><td>Compilación (la subclase)</td><td>Runtime (cambiás el objeto)</td></tr>
+          </table>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 6;grid-row:5/span 4;">
+          <div class="tag on sm" style="align-self:flex-start;margin-bottom:14px;">Mini-caso</div>
+          <p class="body">“Generar un reporte es siempre: datos → encabezado → filas → guardar. Lo único que cambia entre PDF, Excel y HTML es <strong>cómo se arma el encabezado</strong> y <strong>con qué extensión</strong> se guarda.”</p>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:7/span 6;grid-row:5/span 4;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ Template Method.</strong> El <strong>esqueleto es fijo</strong> y solo cambian <strong>algunos pasos</strong> → herencia con un template method.</p>
+              <p class="body-sm" style="margin-top:12px;"><mark>Esqueleto fijo + rellenos → Template Method; algoritmo entero intercambiable en caliente → Strategy.</mark></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 34 · LOS DESEMPATES, TODOS JUNTOS ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Los desempates, todos juntos</h2>
+          <span class="kicker sm">la chuleta de una línea por par</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 12;grid-row:2/span 7;">
+          <table class="matrix xs">
+            <tr><th style="width:38%">Par</th><th>La pregunta que lo parte</th></tr>
+            <tr><td class="pat" style="font-size:17px;">Factory Method vs Abstract Factory</td><td>¿<strong>un</strong> producto o una <strong>familia</strong>?</td></tr>
+            <tr><td class="pat" style="font-size:17px;">Abstract Factory vs Builder</td><td>¿varios productos <strong>coherentes</strong> o uno con <strong>partes opcionales</strong>?</td></tr>
+            <tr><td class="pat" style="font-size:17px;">Adapter vs Facade</td><td>¿<strong>traduce</strong> porque no encaja o <strong>simplifica</strong> porque es engorroso?</td></tr>
+            <tr><td class="pat" style="font-size:17px;">Adapter vs Decorator</td><td>¿<strong>cambia</strong> la interfaz o la <strong>mantiene</strong> y suma?</td></tr>
+            <tr><td class="pat" style="font-size:17px;">Composite vs Decorator</td><td>¿<strong>árbol</strong> (muchos hijos) o <strong>pila</strong> (uno envuelto)?</td></tr>
+            <tr><td class="pat" style="font-size:17px;">CoR vs Decorator</td><td>¿alguien <strong>corta</strong> o <strong>todos suman</strong>?</td></tr>
+            <tr><td class="pat" style="font-size:17px;">Strategy vs State</td><td>¿<strong>el cliente</strong> elige o <strong>el estado</strong> decide el siguiente (transiciones)?</td></tr>
+            <tr><td class="pat" style="font-size:17px;">Template Method vs Strategy</td><td>¿<strong>herencia</strong> (rellenar pasos) o <strong>composición</strong> (cambiar el algoritmo entero)?</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 35 · REPASO RELÁMPAGO · CREACIONALES Y ESTRUCTURALES ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Repaso relámpago — creacionales y estructurales</h2>
+          <span class="kicker sm" style="color:var(--lemon)">quiz oral: decilo vos primero</span>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 4;grid-row:2/span 7;">
+          <p class="body" style="margin-bottom:20px;">Te digo el nombre y <strong>vos tirás intención + señal delatora</strong>, sin mirar.</p>
+          <div class="t-30 title" style="line-height:1.4;">Singleton · Factory Method · Abstract Factory · Builder · Adapter · Composite · Decorator · Facade</div>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:5/span 8;grid-row:2/span 7;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <ul class="clean tight">
+                <li class="body-sm"><strong>Singleton</strong> — una <strong>única instancia</strong> global · <em>“una sola en todo el sistema”</em>.</li>
+                <li class="body-sm"><strong>Factory Method</strong> — decidir <strong>qué clase</strong> concreta crear · <em>“según el tipo, crear un X distinto”</em>.</li>
+                <li class="body-sm"><strong>Abstract Factory</strong> — una <strong>familia coherente</strong> · <em>“variante completa que no se mezcla”</em>.</li>
+                <li class="body-sm"><strong>Builder</strong> — armar <strong>paso a paso</strong> con muchas partes · <em>“muchos opcionales / constructor telescópico”</em>.</li>
+                <li class="body-sm"><strong>Adapter</strong> — <strong>traducir</strong> entre interfaces incompatibles · <em>“no encaja y no lo puedo tocar”</em>.</li>
+                <li class="body-sm"><strong>Composite</strong> — <strong>árbol</strong> todo-parte · <em>“contiene otros del mismo tipo, a cualquier profundidad”</em>.</li>
+                <li class="body-sm"><strong>Decorator</strong> — <strong>sumar</strong> comportamientos combinables · <em>“opcional, combinable, en runtime, sin tocar la clase”</em>.</li>
+                <li class="body-sm"><strong>Facade</strong> — <strong>esconder</strong> un subsistema · <em>“un punto de entrada único, esconder la complejidad”</em>.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 36 · REPASO RELÁMPAGO · COMPORTAMIENTO ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Repaso relámpago — comportamiento</h2>
+          <span class="kicker sm" style="color:var(--lemon)">la familia que más entró hoy</span>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 4;grid-row:2/span 7;">
+          <p class="body" style="margin-bottom:20px;">Ídem: intención en una línea + señal delatora.</p>
+          <div class="t-36 title" style="line-height:1.4;">Strategy · Observer · Chain of Responsibility · Template Method · State</div>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:5/span 8;grid-row:2/span 7;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <ul class="clean tight">
+                <li class="body"><strong>Strategy</strong> — elegir <strong>cómo</strong> hacer algo entre algoritmos · <em>“distintas formas de calcular/pagar, elegible en runtime”</em>.</li>
+                <li class="body"><strong>Observer</strong> — un cambio <strong>avisa a varios</strong> suscriptos · <em>“cuando pasa X, notificar a los interesados”</em>.</li>
+                <li class="body"><strong>Chain of Responsibility</strong> — la petición <strong>recorre una cadena</strong> y alguien <strong>corta</strong> · <em>“escala / si no puede, que lo pase al siguiente”</em>.</li>
+                <li class="body"><strong>Template Method</strong> — <strong>esqueleto fijo</strong>, la subclase rellena pasos · <em>“el procedimiento es el mismo, cambia el cómo”</em>.</li>
+                <li class="body"><strong>State</strong> — el comportamiento <strong>depende de la etapa</strong> · <em>“según el estado / no se puede X hasta Y”</em>.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 37 · EJERCICIO EN VIVO · CÓMO LO JUGAMOS ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-xl between" style="grid-column:1/span 6;grid-row:1/span 8;">
+          <div class="kicker">Ejercicio en vivo</div>
+          <div>
+            <h2 class="title t-72">Cuatro casos.<br>Cero código.<br>Todo hablado.</h2>
+            <p class="body-lg" style="margin-top:26px;">De <strong>menor a mayor</strong> dificultad.</p>
+          </div>
+          <p class="body">Si el punto <strong>3</strong> no te sale, el <strong>2</strong> no cuenta: hay que saber <strong>descartar</strong> el que se le parece.</p>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:7/span 6;grid-row:1/span 8;">
+          <div class="kicker sm dim" style="margin-bottom:28px;">Por cada caso, tres respuestas</div>
+          <ol class="num">
+            <li class="body-lg"><strong>¿De qué se queja el problema?</strong><br><span class="body-sm dim">¿Crear, estructurar o comunicar? → la familia.</span></li>
+            <li class="body-lg"><strong>¿Qué patrón?</strong><br><span class="body-sm dim">Y qué <strong>palabra exacta</strong> del enunciado te lo delató.</span></li>
+            <li class="body-lg"><strong>¿Por qué no el parecido?</strong><br><span class="body-sm dim">Te digo yo cuál es. <strong>Esta es la respuesta que vale.</strong></span></li>
+          </ol>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 38 · CASO 1 · EL CHECKOUT (Facade) ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Ejercicio en vivo — Caso 1: el checkout</h2>
+          <span class="kicker sm" style="color:var(--lemon)">el parecido a descartar: Adapter</span>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <div class="tag lem sm" style="align-self:flex-start;margin-bottom:22px;">El caso</div>
+          <p class="body-lg">Para procesar una venta, el checkout llama, en <strong>orden exacto</strong>, a <span class="ic">Stock.reservar()</span>, <span class="ic">Precios.calcular()</span>, <span class="ic">Pagos.cobrar()</span>, <span class="ic">Facturacion.emitir()</span>, <span class="ic">Mail.enviar()</span> y <span class="ic">Stock.confirmar()</span>.</p>
+          <p class="body" style="margin-top:18px;">Ese bloque de seis llamadas está <strong>copiado</strong> en la web, la app móvil y el panel de admin. Si cambia el orden o se suma un paso, hay que tocar los tres lugares.</p>
+        </div>
+
+        <div class="panel lemon pad-lg between" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div>
+            <div class="kicker sm dim" style="margin-bottom:20px;">Antes de contestar</div>
+            <p class="body-sm">¿Quién te obliga a la interfaz que ofrecés: alguien, o la inventás vos? ¿A cuántas clases envolvés?</p>
+          </div>
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ Facade.</strong> <em>Estructurar.</em> Seis clases, un <strong>orden exacto</strong>, bloque <strong>duplicado en tres clientes</strong>. Una <span class="ic">CheckoutFacade.procesarVenta(carrito)</span> orquesta adentro; los tres llaman una línea.</p>
+              <p class="body-sm" style="margin-top:12px;"><strong>¿Por qué no Adapter?</strong> Nadie te obliga a una interfaz existente ni hay incompatibilidad — <strong>inventás</strong> una cómoda. <mark>Facade simplifica; Adapter traduce.</mark></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 39 · CASO 2 · EL BANCO (CoR) ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Ejercicio en vivo — Caso 2: el banco</h2>
+          <span class="kicker sm" style="color:var(--lemon)">el parecido a descartar: Decorator</span>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <div class="tag lem sm" style="align-self:flex-start;margin-bottom:22px;">El caso</div>
+          <p class="body-lg">Una fintech evalúa créditos. La solicitud pasa por controles: identidad, deudas en el Veraz, ingreso mínimo y tope de monto.</p>
+          <p class="body" style="margin-top:16px;">Si <strong>cualquiera</strong> falla, se <strong>rechaza ahí mismo</strong> y los siguientes <strong>ni se ejecutan</strong>. Y <strong>cada sucursal usa controles distintos y en distinto orden</strong>: Córdoba no aplica el tope, Rosario suma uno de antigüedad al principio.</p>
+        </div>
+
+        <div class="panel lemon pad-lg between" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div>
+            <div class="kicker sm dim" style="margin-bottom:20px;">Antes de contestar</div>
+            <p class="body-sm">¿Se ejecutan todos los pasos y suman, o el primero que falla corta?</p>
+          </div>
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ Chain of Responsibility.</strong> <em>Comunicar.</em> Recorre una secuencia, cualquiera <strong>corta</strong> (<em>“se rechaza ahí mismo y los siguientes ni se ejecutan”</em>), y el <strong>orden se configura por sucursal</strong>.</p>
+              <p class="body-sm" style="margin-top:12px;"><strong>¿Por qué no Decorator?</strong> Ahí <strong>todas</strong> las capas suman. Acá el primer control que falla <strong>corta</strong>. <mark>Decorator acumula; CoR descarta.</mark></p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 40 · CASO 3 · EL DELIVERY (State) ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Ejercicio en vivo — Caso 3: el delivery</h2>
+          <span class="kicker sm" style="color:var(--lemon)">el parecido a descartar: Strategy</span>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <div class="tag lem sm" style="align-self:flex-start;margin-bottom:22px;">El caso</div>
+          <p class="body-lg">Un pedido pasa por <strong>En preparación → En camino → Entregado</strong>, y puede <strong>cancelarse</strong>.</p>
+          <p class="body" style="margin-top:16px;">Se puede cancelar mientras está <em>en preparación</em>, pero <strong>no</strong> una vez que salió. Se marca <em>entregado</em> <strong>solo si</strong> está <em>en camino</em>. Hoy el código tiene un <span class="ic">estado: string</span> y <strong>cuatro métodos, cada uno con el mismo <span class="ic">switch</span> de cinco casos</strong>.</p>
+        </div>
+
+        <div class="panel lemon pad-lg between" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div>
+            <div class="kicker sm dim" style="margin-bottom:20px;">Antes de contestar</div>
+            <p class="body-sm">¿Hay reglas sobre a qué se puede pasar después? ¿Quién elige el siguiente: el cliente o el propio objeto?</p>
+          </div>
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ State.</strong> <em>Comunicar.</em> Ciclo de vida con etapas, <strong>transiciones prohibidas</strong> (<em>“no cancelar una vez que salió”</em>) y el síntoma: el <span class="ic">switch</span> repetido en los cuatro métodos.</p>
+              <p class="body-sm" style="margin-top:12px;"><strong>¿Por qué no Strategy?</strong> El <strong>estado elige el siguiente</strong> desde adentro, hay <strong>reglas de transición</strong>, y contesta <em>“¿qué puedo hacer ahora?”</em>, no <em>“¿cómo hago X?”</em>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 41 · CASO 4 · EL EDITOR (Decorator) ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Ejercicio en vivo — Caso 4: el editor de texto</h2>
+          <span class="kicker sm" style="color:var(--lemon)">el parecido a descartar: Chain of Responsibility</span>
+        </div>
+
+        <div class="panel pad-xl center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <div class="tag lem sm" style="align-self:flex-start;margin-bottom:22px;">El caso</div>
+          <p class="body-lg">El editor exporta un documento. Al exportar, el usuario marca con checkboxes si va <strong>numerado</strong>, <strong>con marca de agua</strong>, <strong>con índice automático</strong>, o <strong>cualquier combinación</strong>.</p>
+          <p class="body" style="margin-top:16px;">La clase <span class="ic">Documento</span> ya existe, funciona y <strong>no se toca</strong>. La combinación la elige el usuario <strong>en el momento</strong>, no está definida de antemano.</p>
+        </div>
+
+        <div class="panel lemon pad-lg between" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div>
+            <div class="kicker sm dim" style="margin-bottom:20px;">Antes de contestar</div>
+            <p class="body-sm">Si marca las tres, ¿se aplican las tres, o una sola “atiende” y corta?</p>
+          </div>
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body"><strong>→ Decorator.</strong> <em>Estructurar.</em> Funcionalidades <strong>opcionales y combinables</strong> (2³ = 8), en <strong>runtime</strong>, sobre una clase que <strong>no se toca</strong>.</p>
+              <p class="body-sm" style="margin-top:12px;"><strong>¿Por qué no CoR?</strong> Es el Caso 2 <strong>dado vuelta</strong>: acá <strong>todas</strong> las capas suman y <strong>nadie corta</strong>. <mark>Decorator acumula, CoR descarta.</mark> Si explicás por qué el 2 es CoR y el 4 es Decorator, ese par ya no te lo saca nadie.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 42 · CIERRE ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-xl between" style="grid-column:1/span 7;grid-row:1/span 8;">
+          <div class="kicker" style="color:var(--lemon)">Cierre</div>
+          <div>
+            <h2 class="title" style="font-size:96px;color:var(--paper);">Unidad<br><mark style="background:var(--lemon);color:var(--ink)">cerrada</mark></h2>
+            <p class="body-lg" style="color:var(--paper);margin-top:30px;"><strong>13 de 13</strong> — y con el método para reconocerlos.</p>
+          </div>
+          <p class="body" style="color:var(--paper);">Lo que <strong>no</strong> hay que llevarse: la idea de que hay que meter patrones. <em>“Su mera existencia no implica su uso.”</em> Un patrón <strong>mal justificado</strong> resta más de lo que un nombre correcto suma.</p>
+        </div>
+
+        <div class="panel pad-lg between" style="grid-column:8/span 5;grid-row:1/span 5;">
+          <div>
+            <div class="kicker sm dim" style="margin-bottom:20px;">El método, resumido</div>
+            <ul class="clean tight">
+              <li class="body-sm"><strong>¿Crear, estructurar o comunicar?</strong> → familia.</li>
+              <li class="body-sm">La <strong>señal delatora</strong> → patrón.</li>
+              <li class="body-sm"><strong>Por qué no el parecido</strong> → el desempate, que es lo que da el punto.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="panel lemon pad-lg between" style="grid-column:8/span 5;grid-row:6/span 3;">
+          <div class="kicker sm">Se compara</div>
+          <div class="t-44 title">la intención,<br>no el dibujo.</div>
+          <p class="body-sm">Los UML se parecen mucho entre patrones distintos. Y ninguno es gratis: saber explicar el <strong>trade-off</strong> vale más que recitar la definición.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 43 · DESPUÉS DE CLASE · FICHA FINAL DE LOS 13 ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Ficha final de los 13</h2>
+          <span class="kicker sm" style="color:var(--lemon)">para la noche antes del parcial</span>
+        </div>
+
+        <div class="panel pad-sm center" style="grid-column:1/span 12;grid-row:2/span 7;">
+          <table class="matrix xxs">
+            <tr><th style="width:15%">Patrón</th><th style="width:30%">Intención (1 línea)</th><th style="width:31%">Señal delatora</th><th>Trampa típica</th></tr>
+            <tr><td class="pat">Singleton</td><td>Una <strong>única</strong> instancia global</td><td><em>“una sola en todo el sistema”</em></td><td>vs. variable global (es objeto: lazy, heredable)</td></tr>
+            <tr><td class="pat">Factory Method</td><td>Decidir <strong>qué clase</strong> crear (un producto)</td><td><em>“según el tipo, crear un X”</em></td><td>vs. Abstract Factory (uno vs. familia)</td></tr>
+            <tr><td class="pat">Abstract Factory</td><td>Crear una <strong>familia coherente</strong></td><td><em>“variante completa que no se mezcla”</em></td><td>vs. Factory Method / Builder</td></tr>
+            <tr><td class="pat">Builder</td><td>Armar <strong>paso a paso</strong>, muchas partes</td><td><em>“muchos opcionales / telescópico”</em></td><td>vs. Abstract Factory (uno con partes)</td></tr>
+            <tr><td class="pat">Adapter</td><td><strong>Traducir</strong> interfaces incompatibles</td><td><em>“no encaja y no lo puedo tocar”</em></td><td>vs. Facade / Decorator</td></tr>
+            <tr><td class="pat">Composite</td><td><strong>Árbol</strong> todo-parte, hoja=rama</td><td><em>“contiene otros del mismo tipo”</em></td><td>vs. Decorator (árbol vs. pila)</td></tr>
+            <tr><td class="pat">Decorator</td><td><strong>Sumar</strong> comportamientos combinables</td><td><em>“opcional, combinable, en runtime”</em></td><td>vs. CoR (suma vs. corta)</td></tr>
+            <tr><td class="pat">Facade</td><td><strong>Esconder</strong> un subsistema</td><td><em>“punto de entrada único”</em></td><td>vs. Adapter (simplifica vs. traduce)</td></tr>
+            <tr><td class="pat">Strategy</td><td>Elegir <strong>cómo</strong> hacer algo</td><td><em>“distintas formas de X, en runtime”</em></td><td>vs. State / Template Method</td></tr>
+            <tr><td class="pat">Observer</td><td>Un cambio <strong>avisa a varios</strong></td><td><em>“cuando pasa X, notificar”</em></td><td>dirección del aviso (pub-sub)</td></tr>
+            <tr><td class="pat">Chain of Resp.</td><td>La petición <strong>recorre</strong>, alguien <strong>corta</strong></td><td><em>“escala / que lo pase al siguiente”</em></td><td>vs. Decorator (corta vs. suma)</td></tr>
+            <tr><td class="pat">Template Method</td><td><strong>Esqueleto fijo</strong>, rellena pasos</td><td><em>“el procedimiento es el mismo”</em></td><td>vs. Strategy (herencia vs. comp.)</td></tr>
+            <tr><td class="pat">State</td><td>El comportamiento <strong>depende de la etapa</strong></td><td><em>“según el estado / no X hasta Y”</em></td><td>vs. Strategy (transiciones con reglas)</td></tr>
+          </table>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 44 · DESPUÉS DE CLASE · EJERCICIOS A-D ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Después de clase — Ejercicios (A a D)</h2>
+          <span class="kicker sm">familia · patrón · por qué no el parecido · UML + esqueleto TS</span>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:1/span 6;grid-row:2/span 7;">
+          <ol class="num">
+            <li class="body-sm"><strong>El chat de soporte.</strong> Primero atiende un bot; si no puede, pasa a un agente nivel 1; si no, escala a nivel 2; y si tampoco, a un supervisor. Cada nivel decide si resuelve o escala. El cliente <strong>no sabe</strong> quién va a atenderlo.</li>
+            <li class="body-sm"><strong>Los reportes.</strong> PDF, Excel y HTML. El procedimiento es <strong>idéntico</strong>: traer datos, encabezado, filas, pie con fecha, guardar. Lo único que cambia es <strong>cómo</strong> se arma el encabezado, <strong>cómo</strong> se vuelca cada fila y <strong>con qué extensión</strong>. Hoy hay tres clases con el mismo código copiado, ya desincronizadas.</li>
+          </ol>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:7/span 6;grid-row:2/span 7;">
+          <ol class="num" start="3" style="counter-reset:n 2;">
+            <li class="body-sm"><strong>El reproductor.</strong> <em>play</em>, <em>pausa</em>, <em>stop</em>. Lo que hace cada botón depende de la situación: detenido → play arranca; reproduciendo → play no hace nada y pausa suspende; pausado → play retoma. Desde <em>detenido</em> no se puede pasar a <em>pausado</em>. Hoy hay un <span class="ic">switch (situacion)</span> en cada método.</li>
+            <li class="body-sm"><strong>El backup.</strong> Tu módulo llama en orden a <span class="ic">Compresor.zip()</span>, <span class="ic">Cifrador.encriptar()</span>, <span class="ic">Nube.subir()</span> y <span class="ic">Registro.log()</span>. Ese bloque está pegado en tres comandos. Querés que cada uno llame a <span class="ic">hacerBackup(datos)</span> y nada más, y la interfaz <span class="ic">hacerBackup</span> <strong>la definís vos</strong>.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 45 · DESPUÉS DE CLASE · SOLUCIONES A-D ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Soluciones — Ejercicios A a D</h2>
+          <span class="kicker sm" style="color:var(--lemon)">intentalos antes de leer</span>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:1/span 3;grid-row:2/span 7;">
+          <div class="t-30 title" style="margin-bottom:14px;">A → <mark>Chain of Resp.</mark></div>
+          <p class="body-sm"><em>Comunicar.</em> <strong>“escala”</strong> + <em>“si no puede, que lo pase al siguiente”</em>. <span class="ic">Bot</span>, <span class="ic">Nivel1</span>, <span class="ic">Nivel2</span>, <span class="ic">Supervisor</span>; cada uno resuelve o llama a <span class="ic">super.atender()</span>.</p>
+          <p class="body-xs dim" style="margin-top:10px;">No es Decorator: acá <strong>uno solo</strong> atiende y la cadena <strong>se corta</strong>.</p>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:4/span 3;grid-row:2/span 7;">
+          <div class="t-30 title" style="margin-bottom:14px;">B → <mark>Template Method</mark></div>
+          <p class="body-sm"><em>Comportamiento.</em> <strong>“el procedimiento es idéntico”</strong> + <strong>“lo único que cambia es cómo”</strong>. <span class="ic">Reporte</span> con <span class="ic">generar()</span> (template) y <span class="ic">armarEncabezado()</span>, <span class="ic">volcarFila()</span>, <span class="ic">extension()</span> abstractos.</p>
+          <p class="body-xs dim" style="margin-top:10px;">No es Strategy: se rellenan <strong>pasos</strong> de un esqueleto fijo, con <strong>herencia</strong>, no se cambia el algoritmo entero.</p>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:7/span 3;grid-row:2/span 7;">
+          <div class="t-30 title" style="margin-bottom:14px;">C → <mark>State</mark></div>
+          <p class="body-sm"><em>Comportamiento.</em> Ciclo de vida (detenido/reproduciendo/pausado), <strong>transiciones prohibidas</strong> (<em>“desde detenido no a pausado”</em>) y el <span class="ic">switch</span> repetido. <span class="ic">Detenido</span>, <span class="ic">Reproduciendo</span>, <span class="ic">Pausado</span>; el reproductor delega.</p>
+          <p class="body-xs dim" style="margin-top:10px;">No es Strategy: <strong>cada estado decide el siguiente</strong>; el reproductor no lo elige desde afuera.</p>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:10/span 3;grid-row:2/span 7;">
+          <div class="t-30 title" style="margin-bottom:14px;">D → <mark>Facade</mark></div>
+          <p class="body-sm"><em>Estructurar.</em> Cuatro clases, orden fijo, bloque <strong>duplicado en tres comandos</strong>, y la interfaz <span class="ic">hacerBackup</span> <strong>la inventás vos</strong>. <span class="ic">BackupFacade</span> orquesta adentro.</p>
+          <p class="body-xs dim" style="margin-top:10px;">No es Adapter: no hay interfaz preexistente ni incompatibilidad. <strong>Facade simplifica; Adapter traduce.</strong></p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 46 · SIMULACRO DE PARCIAL · ENUNCIADO (integrador, 4 patrones) ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Simulacro de parcial — el sistema de tickets</h2>
+          <span class="kicker sm">un solo enunciado, cuatro patrones</span>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <p class="body-sm" style="margin-bottom:16px;">Diseñás el módulo de soporte de una empresa. Cuatro requerimientos. Identificá <strong>cada patrón</strong>, justificá y descartá el parecido — y explicá <strong>cómo se encadenan</strong>.</p>
+          <ol class="num">
+            <li class="body-sm"><strong>Configuración</strong> (mail admin, límites, plantillas): se carga <strong>una sola vez</strong> y es <strong>la misma para toda la app</strong>; cualquier módulo la consulta.</li>
+            <li class="body-sm"><strong>Crear un ticket</strong>: título y descripción obligatorios; opcionales prioridad, categoría, adjuntos, etiquetas, SLA, cliente. Hoy un <span class="ic">new Ticket(...)</span> de <strong>8 parámetros</strong>.</li>
+            <li class="body-sm"><strong>Filtros de admisión</strong>: spam, cliente activo, duplicados. Si <strong>cualquiera</strong> lo marca, se <strong>descarta</strong> y los siguientes no corren. Cada cola usa filtros y orden distintos.</li>
+            <li class="body-sm"><strong>Ciclo de vida</strong>: Abierto → En progreso → Resuelto → Cerrado. Desde Cerrado no se vuelve a Abierto; solo se resuelve si está En progreso. Hoy el <strong>mismo <span class="ic">switch</span></strong> en cada método.</li>
+          </ol>
+        </div>
+
+        <div class="panel ink pad-lg center" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <ul class="clean on-ink tight">
+                <li class="body-sm"><strong>(1) → Singleton.</strong> <em>“una sola vez / la misma para toda la app”</em>. Ojo: <strong>viola SRP y DIP</strong> (mejor inyectarla).</li>
+                <li class="body-sm"><strong>(2) → Builder.</strong> Constructor telescópico (2 + 6 opcionales). No es Abstract Factory: un solo producto con partes.</li>
+                <li class="body-sm"><strong>(3) → Chain of Responsibility.</strong> Filtros que <strong>cortan</strong>, orden por cola. No es Decorator (ahí todos suman).</li>
+                <li class="body-sm"><strong>(4) → State.</strong> Transiciones prohibidas + <span class="ic">switch</span> repetido. No es Strategy (el estado decide el siguiente).</li>
+              </ul>
+              <div class="rule" style="margin:14px 0;background:var(--lemon);"></div>
+              <p class="body-sm" style="color:var(--lemon)">Los dos de <em>comunicar</em> conviven: <strong>CoR filtra la entrada</strong> (una pasada, alguien corta), <strong>State gobierna el ciclo</strong> (etapas con transiciones).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 47 · SIMULACRO · EL UML RESUELTO ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Simulacro — el UML resuelto</h2>
+          <span class="kicker sm" style="color:var(--lemon)">cuatro patrones, encadenados 1 → 4</span>
+        </div>
+
+        <div class="panel plain" style="grid-column:1/span 9;grid-row:2/span 7;padding:14px;">
+          <div class="umlstage" style="width:1290px;height:700px;">
+            <svg viewBox="0 0 1290 700" width="1290" height="700">
+              <!-- A · Singleton ⇢ Ticket (dependencia: la consultan todos) -->
+              <path d="M165,210 C300,285 400,300 512,304" fill="none" stroke="#0A0A0A" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#arw)"/>
+              <!-- B · Builder «create» Ticket (dependencia) -->
+              <line x1="300" y1="360" x2="418" y2="360" stroke="#0A0A0A" stroke-width="2" stroke-dasharray="8 6" marker-end="url(#arw)"/>
+              <!-- C · el ticket entra a la cadena de filtros (flujo) -->
+              <line x1="662" y1="345" x2="916" y2="178" stroke="#0A0A0A" stroke-width="2.2" marker-end="url(#arw)"/>
+              <!-- D · Ticket ◆→ EstadoTicket (composición: contexto contiene su estado) -->
+              <line x1="540" y1="432" x2="540" y2="540" stroke="#0A0A0A" stroke-width="2.4" marker-start="url(#dfill)" marker-end="url(#arw)"/>
+              <!-- E · generalización SÓLIDA de los 3 filtros → FiltroAdmision -->
+              <line x1="972" y1="266" x2="972" y2="220" stroke="#0A0A0A" stroke-width="2" marker-end="url(#tri)"/>
+              <line x1="1102" y1="266" x2="1102" y2="220" stroke="#0A0A0A" stroke-width="2" marker-end="url(#tri)"/>
+              <line x1="1220" y1="266" x2="1220" y2="220" stroke="#0A0A0A" stroke-width="2" marker-end="url(#tri)"/>
+              <!-- F · autorreferencia siguiente (agregación) -->
+              <path d="M1245,74 C1284,50 1284,116 1247,104" fill="none" stroke="#0A0A0A" stroke-width="2" marker-start="url(#dhol)"/>
+              <!-- G · cualquiera descarta (rojo) -->
+              <line x1="1102" y1="360" x2="1102" y2="408" stroke="#E5482F" stroke-width="2.2" stroke-dasharray="7 5" marker-end="url(#arwr)"/>
+            </svg>
+
+            <!-- chips de etapa 1 → 4 -->
+            <div class="umlrel" style="left:30px;top:40px;background:var(--lemon);font-weight:700;">1 · Singleton</div>
+            <div class="umlrel" style="left:30px;top:290px;background:var(--lemon);font-weight:700;">2 · Builder</div>
+            <div class="umlrel" style="left:920px;top:40px;background:var(--lemon);font-weight:700;">3 · Chain of Responsibility</div>
+            <div class="umlrel" style="left:420px;top:508px;background:var(--lemon);font-weight:700;">4 · State</div>
+
+            <!-- 1 · Singleton -->
+            <div class="umlbox lem" style="left:30px;top:70px;width:270px;">
+              <div class="nm">Configuracion</div>
+              <div class="mem"><u>- instancia</u>   <span class="abs">« static »</span>
+- Configuracion()   <span class="abs">« priv »</span>
+<u>+ getInstancia()</u></div>
+            </div>
+
+            <!-- 2 · Builder -->
+            <div class="umlbox" style="left:30px;top:320px;width:270px;">
+              <div class="nm">TicketBuilder</div>
+              <div class="mem">+ conTitulo() ... conSLA()
++ construir(): Ticket</div>
+            </div>
+
+            <!-- El Ticket: UNA sola caja — producto del Builder Y contexto del State -->
+            <div class="umlbox ink" style="left:420px;top:300px;width:240px;">
+              <div class="stereo" style="color:var(--lemon)">producto + contexto</div>
+              <div class="nm">Ticket</div>
+              <div class="mem">- estado: EstadoTicket
++ tomar() / resolver()
++ cerrar()</div>
+            </div>
+
+            <!-- 3 · Chain of Responsibility -->
+            <div class="umlbox" style="left:920px;top:70px;width:340px;">
+              <div class="stereo">abstract</div>
+              <div class="nm it">FiltroAdmision</div>
+              <div class="mem">- siguiente: FiltroAdmision
++ encadenar(f) / + admitir(t)</div>
+            </div>
+            <div class="umlbox" style="left:920px;top:266px;width:105px;"><div class="nm" style="font-size:15px;">Spam</div></div>
+            <div class="umlbox" style="left:1035px;top:266px;width:135px;"><div class="nm" style="font-size:13px;">ClienteActivo</div></div>
+            <div class="umlbox" style="left:1180px;top:266px;width:80px;"><div class="nm" style="font-size:13px;">Duplicado</div></div>
+            <div class="flowbox rej" style="left:1020px;top:408px;width:165px;height:44px;">Descartado</div>
+
+            <!-- 4 · State -->
+            <div class="umlbox" style="left:420px;top:540px;width:240px;">
+              <div class="stereo">«interface»</div>
+              <div class="nm it">EstadoTicket</div>
+            </div>
+
+            <!-- etiquetas de relación -->
+            <div class="umlrel onpaper" style="left:180px;top:252px;">getInstancia() · la consultan todos</div>
+            <div class="umlrel onpaper" style="left:305px;top:334px;">«create»</div>
+            <div class="umlrel onpaper" style="left:700px;top:236px;">admisión</div>
+            <div class="umlrel onpaper" style="left:552px;top:478px;">estado</div>
+            <div class="umlrel" style="left:1120px;top:56px;">siguiente 0..1</div>
+            <div class="umlrel onpaper" style="left:995px;top:372px;color:var(--red);">cualquiera descarta</div>
+
+            <div class="umlnote" style="left:700px;top:548px;width:340px;">4 estados que implementan <strong>EstadoTicket</strong>: Abierto → EnProgreso → Resuelto → Cerrado, con transiciones prohibidas. El contexto delega y no tiene <span class="mono">if</span>.</div>
+          </div>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:10/span 3;grid-row:2/span 7;">
+          <div class="kicker sm" style="margin-bottom:16px;">Lo que se pregunta oral</div>
+          <div class="answer">
+            <div class="ans-hint"><span>Click para revelar</span></div>
+            <div class="ans-body">
+              <p class="body-sm"><span class="ic">Ticket</span> aparece en <strong>dos bloques</strong>: es el <strong>producto</strong> del Builder y el <strong>contexto</strong> del State. No es un error: prueba que los patrones <strong>colaboran</strong> sin pisarse.</p>
+              <p class="body-sm" style="margin-top:12px;">El <strong>Singleton</strong> no toca a nadie por asociación: es consultado <em>desde adentro</em> de los métodos, y por eso <strong>esconde su dependencia</strong> — el defecto a señalar.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 48 · DESPUÉS DE CLASE · BATERÍA "¿QUÉ PATRÓN ES?" ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Batería — ¿qué patrón es?</h2>
+          <span class="kicker sm">respondé todos de corrido, después corregí</span>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:1/span 6;grid-row:2/span 7;">
+          <ol class="num">
+            <li class="body-sm">“Envolver un servicio SOAP viejo para usarlo como si fuera mi interfaz <span class="ic">Repositorio</span>.”</li>
+            <li class="body-sm">“Un menú tiene ítems y submenús, que a su vez tienen ítems y submenús. Calcular cuántas opciones hay en total.”</li>
+            <li class="body-sm">“Que exista una sola conexión al broker de mensajes en toda la app.”</li>
+            <li class="body-sm">“El precio final se calcula distinto según cliente común, VIP o mayorista, y quiero cambiar la política sin tocar el resto.”</li>
+          </ol>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:7/span 6;grid-row:2/span 7;">
+          <ol class="num" start="5" style="counter-reset:n 4;">
+            <li class="body-sm">“Cuando cambia el stock de un producto, se actualizan solos el carrito, la vitrina y el panel de reportes.”</li>
+            <li class="body-sm">“Al exportar puedo pedir comprimido, cifrado, ambos o ninguno; lo elijo en el momento.”</li>
+            <li class="body-sm">“Un envío pasa por Pendiente → Despachado → En reparto → Entregado, y desde cada etapa solo se avanza a la siguiente.”</li>
+            <li class="body-sm">“Crear un botón, un checkbox y un panel, todos del mismo tema (claro u oscuro), sin mezclarse.”</li>
+          </ol>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 49 · BATERÍA · RESPUESTAS (slide entera de solución) ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel ink pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44" style="color:var(--paper)">Batería — respuestas</h2>
+          <span class="kicker sm" style="color:var(--lemon)">ojo con las trampas plantadas</span>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:1/span 6;grid-row:2/span 6;">
+          <ol class="num">
+            <li class="body-sm"><strong>Adapter</strong> — envolver algo <strong>incompatible</strong> que no controlás y <strong>traducir</strong>.</li>
+            <li class="body-sm"><strong>Composite</strong> — <strong>árbol</strong> todo-parte (ítems y submenús).</li>
+            <li class="body-sm"><strong>Singleton</strong> — <em>“una sola”</em> instancia.</li>
+            <li class="body-sm"><strong>Strategy</strong> — elegir <strong>cómo</strong> calcular, sin transiciones.</li>
+          </ol>
+        </div>
+
+        <div class="panel pad-lg" style="grid-column:7/span 6;grid-row:2/span 6;">
+          <ol class="num" start="5" style="counter-reset:n 4;">
+            <li class="body-sm"><strong>Observer</strong> — un cambio <strong>avisa a varios</strong>.</li>
+            <li class="body-sm"><strong>Decorator</strong> — opcionales y combinables, <strong>se acumulan</strong>.</li>
+            <li class="body-sm"><strong>State</strong> — ciclo de vida con <strong>transiciones</strong>.</li>
+            <li class="body-sm"><strong>Abstract Factory</strong> — una <strong>familia</strong> coherente, sin mezclar.</li>
+          </ol>
+        </div>
+
+        <div class="panel lemon pad-lg center" style="grid-column:1/span 12;grid-row:8/span 1;">
+          <p class="body-sm">Trampas: el <strong>1</strong> tienta con Facade (pero hay incompatibilidad + una clase → traduce); el <strong>6</strong> tienta con CoR (pero acumula); el <strong>7</strong> tienta con Strategy (pero hay transiciones). Si caíste, volvé a la ficha y a la tabla de desempates.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+    <!-- ============ 50 · DESPUÉS DE CLASE · LECTURA RECOMENDADA ============ -->
+    <section class="slide">
+      <div class="frame">
+        <div class="panel lemon pad-sm row aic between" style="grid-column:1/span 12;grid-row:1/span 1;">
+          <h2 class="title t-44">Después de clase — Lectura recomendada</h2>
+          <span class="kicker sm">para el parcial</span>
+        </div>
+
+        <div class="panel pad-lg center" style="grid-column:1/span 7;grid-row:2/span 7;">
+          <ul class="clean">
+            <li class="body-sm"><strong>PDF de la cátedra, Unidad 4.</strong> La <strong>comparación entre Chain of Responsibility y Decorator</strong> está explícita ahí y <strong>cae en el parcial</strong>. Leela con la tabla de la slide de CoR al lado.</li>
+            <li class="body-sm"><strong>Refactoring Guru</strong> — <span class="ic">refactoring.guru/es/design-patterns</span>. Fichas de <strong>Facade, Chain of Responsibility, Template Method y State</strong>. La sección <strong>“Relaciones con otros patrones”</strong> es oro puro para los desempates.</li>
+            <li class="body-sm"><strong>SOLID (Clase 2)</strong> con estos patrones en la mano: <strong>CoR, State y Template Method son OCP hecho patrón</strong> (caso nuevo = clase nueva, sin tocar lo existente).</li>
+          </ul>
+        </div>
+
+        <div class="panel ink pad-lg between" style="grid-column:8/span 5;grid-row:2/span 7;">
+          <div>
+            <div class="kicker" style="color:var(--lemon);margin-bottom:24px;">La consigna final</div>
+            <p class="body-lg" style="color:var(--paper);">No estudies “los 13 patrones” — estudiá <mark style="background:var(--lemon);color:var(--ink)">los 8 desempates</mark> de la tabla.</p>
+          </div>
+          <p class="body" style="color:var(--paper);">El que sabe <strong>descartar el parecido</strong>, aprueba. El que solo memorizó nombres, se traba en la justificación.</p>
+        </div>
+      </div>
+      <div class="pagenum"></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ===========================================
+   CONTROLADOR — Stage fijo 1920×1080 escalado.
+   =========================================== */
+class SlidePresentation{
+  constructor(){
+    this.slides=[...document.querySelectorAll('.slide')];
+    this.current=0;
+    this.stage=document.getElementById('deckStage');
+    this.numberSlides();
+    this.setupScale();
+    this.setupNav();
+    this.show(0);
+  }
+  numberSlides(){
+    const total=this.slides.length;
+    this.slides.forEach((s,i)=>{
+      const pn=s.querySelector('.pagenum');
+      if(pn) pn.textContent=String(i+1).padStart(2,'0')+' / '+total;
+    });
+  }
+  setupScale(){
+    const scale=()=>{
+      const f=Math.min(window.innerWidth/1920, window.innerHeight/1080);
+      const x=(window.innerWidth-1920*f)/2;
+      const y=(window.innerHeight-1080*f)/2;
+      this.stage.style.transform=`translate(${x}px, ${y}px) scale(${f})`;
+    };
+    scale();
+    window.addEventListener('resize',scale);
+  }
+  show(i){
+    this.current=Math.max(0,Math.min(i,this.slides.length-1));
+    this.slides.forEach((s,idx)=>{
+      s.classList.toggle('active',idx===this.current);
+      s.classList.toggle('visible',idx===this.current);
+    });
+    document.getElementById('progress').style.width=((this.current)/(this.slides.length-1)*100)+'%';
+    location.hash=this.current+1;
+  }
+  next(){this.show(this.current+1);}
+  prev(){this.show(this.current-1);}
+  setupNav(){
+    document.addEventListener('keydown',e=>{
+      if(e.target.getAttribute && e.target.getAttribute('contenteditable')==='true') return;
+      if(['ArrowRight','ArrowDown',' ','PageDown'].includes(e.key)){e.preventDefault();this.next();}
+      else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){e.preventDefault();this.prev();}
+      else if(e.key==='Home'){e.preventDefault();this.show(0);}
+      else if(e.key==='End'){e.preventDefault();this.show(this.slides.length-1);}
+      else if(e.key==='r'||e.key==='R'){
+        const ans=this.slides[this.current].querySelectorAll('.answer');
+        const anyHidden=[...ans].some(a=>!a.classList.contains('revealed'));
+        ans.forEach(a=>a.classList.toggle('revealed',anyHidden));
+      }
+    });
+    let x0=null;
+    this.stage.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;},{passive:true});
+    this.stage.addEventListener('touchend',e=>{
+      if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;
+      if(Math.abs(dx)>50){dx<0?this.next():this.prev();}
+      x0=null;
+    },{passive:true});
+    let wlock=false;
+    window.addEventListener('wheel',e=>{
+      if(wlock)return;if(Math.abs(e.deltaY)<20)return;
+      wlock=true;e.deltaY>0?this.next():this.prev();
+      setTimeout(()=>wlock=false,600);
+    },{passive:true});
+  }
+}
+const deck=new SlidePresentation();
+const fromHash=parseInt(location.hash.replace('#',''),10);
+if(!isNaN(fromHash)) deck.show(fromHash-1);
+
+/* Respuestas difuminadas: click → revela / vuelve a tapar */
+document.querySelectorAll('.answer').forEach(a=>{
+  a.addEventListener('click',()=>a.classList.toggle('revealed'));
+});
+
+/* Edición inline — hover arriba a la izquierda o tecla E */
+const editor={
+  isActive:false,
+  toggleEditMode(){
+    this.isActive=!this.isActive;
+    const btn=document.getElementById('editToggle');
+    btn.classList.toggle('active',this.isActive);
+    document.querySelectorAll('.deck-stage h1,.deck-stage h2,.deck-stage p,.deck-stage li,.deck-stage td,.deck-stage div.body,.deck-stage div.body-sm')
+      .forEach(el=>el.setAttribute('contenteditable',this.isActive));
+    if(!this.isActive) this.save();
+  },
+  save(){try{localStorage.setItem('clase05-html',document.querySelector('.deck-stage').innerHTML);}catch(e){}}
+};
+const hotzone=document.querySelector('.edit-hotzone');
+const editToggle=document.getElementById('editToggle');
+let hideTimeout=null;
+hotzone.addEventListener('mouseenter',()=>{clearTimeout(hideTimeout);editToggle.classList.add('show');});
+hotzone.addEventListener('mouseleave',()=>{hideTimeout=setTimeout(()=>{if(!editor.isActive)editToggle.classList.remove('show');},400);});
+editToggle.addEventListener('mouseenter',()=>clearTimeout(hideTimeout));
+editToggle.addEventListener('mouseleave',()=>{hideTimeout=setTimeout(()=>{if(!editor.isActive)editToggle.classList.remove('show');},400);});
+editToggle.addEventListener('click',()=>editor.toggleEditMode());
+hotzone.addEventListener('click',()=>editor.toggleEditMode());
+document.addEventListener('keydown',e=>{
+  if((e.key==='e'||e.key==='E')&&!(e.target.getAttribute&&e.target.getAttribute('contenteditable')==='true')){
+    editor.toggleEditMode();
+  }
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();editor.save();}
+});
+</script>
+</body>
+</html>
